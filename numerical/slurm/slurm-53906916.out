@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/global/u2/j/jairf/chamba/AandBkernels/numerical/AandB.py", line 318, in <module>
+    get_ipython().run_cell_magic('time', '', '\npath_train      = CONFIG["path_train"]\npath_validation = CONFIG["path_validation"]\npath_test       = CONFIG["path_test"]\n\n### Genera los samples del input\ntrain_in, validation_in, test_in = generate_samples()\nprint(f"Sampled for train, validation and test.")\n\n### Resuelve el EDP para los output\ntrain_out      = AandB_solver(train_in)\nvalidation_out = AandB_solver(validation_in)\ntest_out       = AandB_solver(test_in)\nprint(f"EDP solver completed.")\n\n### Escribe el resultado en un .txt\nwrite_results(path_train,      train_in,      train_out)\nwrite_results(path_validation, validation_in, validation_out)\nwrite_results(path_test,       test_in,       test_out)\nprint(f"Written.\\n")\n\nprint(f"Time elapsed: ")\n')
+    ^^^^^^^^^^^
+NameError: name 'get_ipython' is not defined
+srun: error: nid008280: task 0: Exited with exit code 1
+srun: Terminating StepId=53906916.0

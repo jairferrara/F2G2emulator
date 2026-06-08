@@ -1,0 +1,29 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1777451078.220589  138553 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Config loaded from: automatic_config.json
+  Deterministic ops enabled (seed=42)
+GPUs detected: ['/physical_device:GPU:0']
+Precision: float32 (mixed precision disabled)
+
+Loading data...
+Traceback (most recent call last):
+  File "/global/u2/j/jairf/chamba/NN_4.7.py", line 950, in <module>
+    run_search(cfg)
+  File "/global/u2/j/jairf/chamba/NN_4.7.py", line 870, in run_search
+    raw = np.loadtxt(cfg["data_file"])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/j/jairf/.conda/envs/cosmo/lib/python3.12/site-packages/numpy/lib/_npyio_impl.py", line 1384, in loadtxt
+    arr = _read(fname, dtype=dtype, comment=comment, delimiter=delimiter,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/j/jairf/.conda/envs/cosmo/lib/python3.12/site-packages/numpy/lib/_npyio_impl.py", line 1011, in _read
+    fh = np.lib._datasource.open(fname, 'rt', encoding=encoding)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/j/jairf/.conda/envs/cosmo/lib/python3.12/site-packages/numpy/lib/_datasource.py", line 192, in open
+    return ds.open(path, mode, encoding=encoding, newline=newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/j/jairf/.conda/envs/cosmo/lib/python3.12/site-packages/numpy/lib/_datasource.py", line 529, in open
+    raise FileNotFoundError(f"{path} not found.")
+FileNotFoundError: AandB_output.txt not found.
+srun: error: nid001981: task 0: Exited with exit code 1
+srun: Terminating StepId=52211934.0

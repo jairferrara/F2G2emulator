@@ -1,0 +1,52 @@
+{
+    "data_file": "AandB_output.txt",
+    "scalers_dir": "single/",
+    "plots_dir": "single/",
+    "history_dir": "single/",
+
+    "input_cols": [0, 1, 2, 3, 4, 5],
+    "input_labels": ["z", "k1", "k2", "x12", "Ωm", "log10fR0"],
+
+    "output_groups": {
+        "AB": {
+            "cols": [6, 8],
+            "labels": ["A", "B"],
+            "transform": "none",
+            "model_file": "emulator_AB.keras",
+            "n_layers": 5,
+            "n_neurons": 512,
+            "activation": "swish",
+            "learning_rate": 1e-3,
+            "delta": 1.0
+        },
+        "AprimeBprime": {
+            "cols": [7, 9],
+            "labels": ["A'", "B'"],
+            "transform": "signed_log",
+            "model_file": "emulator_AprimeBprime.keras",
+            "n_layers": 7,
+            "n_neurons": 1024,
+            "activation": "swish",
+            "learning_rate": 1e-3,
+            "delta": 1.0
+        }
+    },
+
+    "val_size": 0.15,
+    "test_size": 0.15,
+
+    "output_activation": "linear",
+    "batch_size": 1024,
+    "epochs": 2000,
+
+    "warmup_epochs": 5,
+    "min_lr": 1e-7,
+    "early_patience": 100,
+    "early_monitor": "val_worst_p99",
+
+    "use_mixed_precision": false,
+    "use_dropout": false,
+    "deterministic": true,
+
+    "seed": 42
+}

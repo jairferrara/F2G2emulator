@@ -1,0 +1,376 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1777424016.626618 1458891 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+I0000 00:00:1777424064.420952 1458891 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 79190 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-80GB, pci bus id: 0000:41:00.0, compute capability: 8.0
+I0000 00:00:1777424066.713138 1459251 service.cc:153] XLA service 0x7fd89c035980 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1777424066.713197 1459251 service.cc:161]   StreamExecutor [0]: NVIDIA A100-SXM4-80GB, Compute Capability 8.0 (Driver: 13.0.0; Runtime: 12.9.0; Toolkit: 12.5.0; DNN: 9.21.0)
+I0000 00:00:1777424066.740618 1459251 dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+I0000 00:00:1777424066.920195 1459251 cuda_dnn.cc:461] Loaded cuDNN version 92100
+I0000 00:00:1777424066.935375 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2025__.20
+I0000 00:00:1777424077.326322 1459251 device_compiler.h:208] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+I0000 00:00:1777424077.609386 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2025__.20
+I0000 00:00:1777424078.464935 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_30', 16 bytes spill stores, 16 bytes spill loads
+
+I0000 00:00:1777424090.792838 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_10', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1777424225.497841 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_164982__.35
+I0000 00:00:1777424227.273612 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424229.598396 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424234.843945 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_164982__.35
+I0000 00:00:1777424236.524859 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424238.422104 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424242.163630 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424247.718446 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424250.680782 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424405.610164 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424412.594202 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_372872__.32
+I0000 00:00:1777424414.292211 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_372872__.32
+I0000 00:00:1777424614.834698 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_647760__.29
+I0000 00:00:1777424614.850989 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424625.012856 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_647760__.29
+I0000 00:00:1777424628.861096 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424754.364871 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777424755.013125 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_16', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1777424766.322613 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_792224__.32
+I0000 00:00:1777424769.761054 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_1_14', 72 bytes spill stores, 72 bytes spill loads
+
+I0000 00:00:1777424778.365167 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_792224__.32
+I0000 00:00:1777424785.788037 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_46', 8 bytes spill stores, 8 bytes spill loads
+
+I0000 00:00:1777424792.167774 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_30', 8 bytes spill stores, 8 bytes spill loads
+
+I0000 00:00:1777424793.789196 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_18', 8 bytes spill stores, 8 bytes spill loads
+
+I0000 00:00:1777424911.222903 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_935938__.26
+I0000 00:00:1777424912.673673 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_935938__.26
+I0000 00:00:1777425050.687605 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1124770__.29
+I0000 00:00:1777425050.705809 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425057.215456 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1124770__.29
+I0000 00:00:1777425059.824939 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425063.290598 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425066.045848 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425209.953601 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425216.847404 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1297303__.32
+I0000 00:00:1777425226.156960 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1297303__.32
+I0000 00:00:1777425232.731084 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_62', 16 bytes spill stores, 16 bytes spill loads
+
+I0000 00:00:1777425469.332849 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1584012__.20
+I0000 00:00:1777425470.559101 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_1584012__.20
+I0000 00:00:1777425784.300199 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2009919__.43
+I0000 00:00:1777425789.244324 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2009919__.43
+I0000 00:00:1777425917.519690 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2163784__.20
+I0000 00:00:1777425919.100881 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425922.426002 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2163784__.20
+I0000 00:00:1777425922.436899 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425924.702246 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425926.023834 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_1_6', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1777425930.027444 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425932.637091 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777425933.890335 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_10', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1777426214.960841 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426221.971940 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2525112__.35
+I0000 00:00:1777426223.299506 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2525112__.35
+I0000 00:00:1777426330.880971 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2667656__.35
+I0000 00:00:1777426333.012427 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426336.862559 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2667656__.35
+I0000 00:00:1777426340.277379 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426343.682299 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426346.284673 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426497.219271 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777426503.623847 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2846234__.29
+I0000 00:00:1777426505.015492 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_2846234__.29
+I0000 00:00:1777426825.041109 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3270609__.20
+I0000 00:00:1777426826.318638 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3270609__.20
+I0000 00:00:1777426954.380357 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3440971__.23
+I0000 00:00:1777426955.678238 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3440971__.23
+I0000 00:00:1777427086.761929 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3617372__.20
+I0000 00:00:1777427088.053563 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3617372__.20
+I0000 00:00:1777427297.863599 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3899793__.43
+I0000 00:00:1777427299.263525 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_3899793__.43
+I0000 00:00:1777427455.317847 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4110026__.20
+I0000 00:00:1777427456.513095 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4110026__.20
+I0000 00:00:1777427614.274703 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4320235__.31
+I0000 00:00:1777427615.528750 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4320235__.31
+I0000 00:00:1777427728.714940 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4472390__.31
+I0000 00:00:1777427729.926553 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4472390__.31
+I0000 00:00:1777427872.379014 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4661486__.35
+I0000 00:00:1777427879.847092 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4661486__.35
+I0000 00:00:1777427882.166938 1459251 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_MatMul_1_16', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1777428013.605997 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4822821__.20
+I0000 00:00:1777428014.915548 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4822821__.20
+I0000 00:00:1777428124.389781 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4968007__.35
+I0000 00:00:1777428125.662282 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_4968007__.35
+I0000 00:00:1777428277.160215 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5172625__.27
+I0000 00:00:1777428278.432684 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5172625__.27
+I0000 00:00:1777428457.346364 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5416096__.35
+I0000 00:00:1777428459.060764 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5416096__.35
+I0000 00:00:1777428569.643315 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5563907__.32
+I0000 00:00:1777428571.152944 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5563907__.32
+I0000 00:00:1777428716.606098 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5761316__.39
+I0000 00:00:1777428717.908642 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5761316__.39
+I0000 00:00:1777428864.776377 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5959451__.35
+I0000 00:00:1777428866.164090 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_5959451__.35
+I0000 00:00:1777428994.081327 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6129120__.23
+I0000 00:00:1777428995.163347 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6129120__.23
+I0000 00:00:1777429110.253268 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6281200__.32
+I0000 00:00:1777429111.874432 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6281200__.32
+I0000 00:00:1777429221.938019 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6427419__.20
+I0000 00:00:1777429223.106553 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6427419__.20
+I0000 00:00:1777429330.557343 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6571094__.39
+I0000 00:00:1777429332.018004 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6571094__.39
+I0000 00:00:1777429497.101480 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6787185__.35
+I0000 00:00:1777429498.653634 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6787185__.35
+I0000 00:00:1777429617.434096 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6941594__.32
+I0000 00:00:1777429618.893577 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_6941594__.32
+I0000 00:00:1777429780.451608 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7152523__.23
+I0000 00:00:1777429781.780441 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7152523__.23
+I0000 00:00:1777429932.634392 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7347019__.35
+I0000 00:00:1777429934.028924 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7347019__.35
+I0000 00:00:1777430037.219475 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7480905__.26
+I0000 00:00:1777430038.572798 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7480905__.26
+I0000 00:00:1777430205.573334 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7702946__.35
+I0000 00:00:1777430207.285889 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7702946__.35
+I0000 00:00:1777430254.130670 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7763899__.20
+I0000 00:00:1777430258.617347 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_7763899__.20
+I0000 00:00:1777430260.989140 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777430452.649234 1459251 dot_search_space.cc:240] All configs were filtered out because none of them sufficiently match the hints. Maybe the hints set does not contain a good representative set of valid configs? Working around this by using the full hints set instead.
+I0000 00:00:1777430464.901555 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_8010034__.32
+I0000 00:00:1777430466.514235 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_8010034__.32
+I0000 00:00:1777430612.087110 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_8192059__.26
+I0000 00:00:1777430613.381918 1459251 dot_merger.cc:481] Merging Dots in computation: a_inference_one_step_on_data_8192059__.26
+GPUs detected: ['/physical_device:GPU:0']
+Mixed precision: mixed_float16 enabled
+Loading data...
+  Loaded 131072 samples
+  X shape: (131072, 6)  |  Y shape: (131072, 4)
+
+Preprocessing...
+  Train: 104857  |  Val: 26215
+
+Generating search space...
+  Total possible combinations: 480
+  Selected for search: 50
+
+--- Run 1/50: layers=3 neurons=512 act=gelu lr=0.0005 ---
+
+Training time: 152.37 s
+  ✅ New best! Worst p99 |ΔY%| = 5.1654%
+
+--- Run 2/50: layers=8 neurons=64 act=gelu lr=0.0001 ---
+
+Training time: 182.07 s
+  Worst p99 |ΔY%| = 12.4575%
+
+--- Run 3/50: layers=7 neurons=512 act=gelu lr=0.0001 ---
+
+Training time: 199.50 s
+  ✅ New best! Worst p99 |ΔY%| = 4.5422%
+
+--- Run 4/50: layers=6 neurons=128 act=tanh lr=0.001 ---
+
+Training time: 141.23 s
+  Worst p99 |ΔY%| = 6.3442%
+
+--- Run 5/50: layers=7 neurons=512 act=tanh lr=0.0001 ---
+
+Training time: 139.86 s
+  Worst p99 |ΔY%| = 5.3476%
+
+--- Run 6/50: layers=5 neurons=64 act=gelu lr=0.001 ---
+
+Training time: 136.66 s
+  Worst p99 |ΔY%| = 6.5857%
+
+--- Run 7/50: layers=6 neurons=128 act=relu lr=0.0005 ---
+
+Training time: 160.58 s
+  Worst p99 |ΔY%| = 14.5887%
+
+--- Run 8/50: layers=7 neurons=256 act=tanh lr=0.01 ---
+
+Training time: 248.28 s
+  Worst p99 |ΔY%| = 10.3247%
+
+--- Run 9/50: layers=3 neurons=512 act=tanh lr=0.001 ---
+
+Training time: 310.97 s
+  Worst p99 |ΔY%| = 7.1238%
+
+--- Run 10/50: layers=8 neurons=256 act=swish lr=0.001 ---
+
+Training time: 129.22 s
+  ✅ New best! Worst p99 |ΔY%| = 3.0911%
+
+--- Run 11/50: layers=3 neurons=64 act=relu lr=0.0001 ---
+
+Training time: 298.34 s
+  Worst p99 |ΔY%| = 32.4189%
+
+--- Run 12/50: layers=6 neurons=256 act=swish lr=0.005 ---
+
+Training time: 105.61 s
+  ✅ New best! Worst p99 |ΔY%| = 2.2995%
+
+--- Run 13/50: layers=8 neurons=128 act=gelu lr=0.0005 ---
+
+Training time: 168.37 s
+  Worst p99 |ΔY%| = 4.2921%
+
+--- Run 14/50: layers=6 neurons=256 act=tanh lr=0.0005 ---
+
+Training time: 319.22 s
+  Worst p99 |ΔY%| = 5.4386%
+
+--- Run 15/50: layers=3 neurons=128 act=gelu lr=0.01 ---
+
+Training time: 126.56 s
+  Worst p99 |ΔY%| = 4.1274%
+
+--- Run 16/50: layers=4 neurons=64 act=gelu lr=0.0005 ---
+
+Training time: 130.01 s
+  Worst p99 |ΔY%| = 12.2408%
+
+--- Run 17/50: layers=3 neurons=256 act=tanh lr=0.01 ---
+
+Training time: 207.28 s
+  Worst p99 |ΔY%| = 5.7430%
+
+--- Run 18/50: layers=8 neurons=128 act=swish lr=0.0005 ---
+
+Training time: 155.51 s
+  Worst p99 |ΔY%| = 4.9839%
+
+--- Run 19/50: layers=3 neurons=128 act=gelu lr=0.0005 ---
+
+Training time: 156.21 s
+  Worst p99 |ΔY%| = 12.1680%
+
+--- Run 20/50: layers=5 neurons=256 act=swish lr=0.0005 ---
+
+Training time: 111.84 s
+  Worst p99 |ΔY%| = 6.0472%
+
+--- Run 21/50: layers=5 neurons=128 act=swish lr=0.01 ---
+
+Training time: 140.53 s
+  Worst p99 |ΔY%| = 2.7411%
+
+--- Run 22/50: layers=8 neurons=512 act=relu lr=0.01 ---
+
+Training time: 136.92 s
+  Worst p99 |ΔY%| = 8.7997%
+
+--- Run 23/50: layers=3 neurons=512 act=gelu lr=0.01 ---
+
+Training time: 107.47 s
+  Worst p99 |ΔY%| = 2.8971%
+
+--- Run 24/50: layers=6 neurons=128 act=swish lr=0.005 ---
+
+Training time: 150.56 s
+  Worst p99 |ΔY%| = 2.4126%
+
+--- Run 25/50: layers=4 neurons=128 act=swish lr=0.0001 ---
+
+Training time: 176.22 s
+  Worst p99 |ΔY%| = 15.5307%
+
+--- Run 26/50: layers=8 neurons=512 act=gelu lr=0.0001 ---
+
+Training time: 110.45 s
+  Worst p99 |ΔY%| = 4.7096%
+
+--- Run 27/50: layers=7 neurons=128 act=tanh lr=0.0005 ---
+
+Training time: 144.00 s
+  Worst p99 |ΔY%| = 7.1167%
+
+--- Run 28/50: layers=7 neurons=64 act=swish lr=0.005 ---
+
+Training time: 145.78 s
+  Worst p99 |ΔY%| = 3.9829%
+
+--- Run 29/50: layers=6 neurons=512 act=swish lr=0.005 ---
+
+Training time: 125.53 s
+  ✅ New best! Worst p99 |ΔY%| = 1.8960%
+
+--- Run 30/50: layers=3 neurons=64 act=swish lr=0.01 ---
+
+Training time: 112.66 s
+  Worst p99 |ΔY%| = 7.9181%
+
+--- Run 31/50: layers=7 neurons=512 act=gelu lr=0.005 ---
+
+Training time: 108.14 s
+  ✅ New best! Worst p99 |ΔY%| = 1.8849%
+
+--- Run 32/50: layers=3 neurons=64 act=gelu lr=0.005 ---
+
+Training time: 104.41 s
+  Worst p99 |ΔY%| = 10.1387%
+
+--- Run 33/50: layers=7 neurons=512 act=swish lr=0.01 ---
+
+Training time: 164.08 s
+  Worst p99 |ΔY%| = 3.5137%
+
+--- Run 34/50: layers=8 neurons=128 act=gelu lr=0.01 ---
+
+Training time: 118.24 s
+  Worst p99 |ΔY%| = 2.5246%
+
+--- Run 35/50: layers=7 neurons=256 act=tanh lr=0.001 ---
+
+Training time: 160.90 s
+  Worst p99 |ΔY%| = 3.8107%
+
+--- Run 36/50: layers=4 neurons=128 act=tanh lr=0.001 ---
+
+Training time: 149.08 s
+  Worst p99 |ΔY%| = 8.1898%
+
+--- Run 37/50: layers=6 neurons=512 act=swish lr=0.001 ---
+
+Training time: 102.13 s
+  Worst p99 |ΔY%| = 2.5127%
+
+--- Run 38/50: layers=5 neurons=64 act=gelu lr=0.0005 ---
+
+Training time: 165.06 s
+  Worst p99 |ΔY%| = 10.7393%
+
+--- Run 39/50: layers=8 neurons=512 act=gelu lr=0.005 ---
+
+Training time: 47.04 s
+  Worst p99 |ΔY%| = 30.8973%
+
+--- Run 40/50: layers=3 neurons=64 act=tanh lr=0.0005 ---
+
+Training time: 199.39 s
+  Worst p99 |ΔY%| = 16.4822%
+
+--- Run 41/50: layers=7 neurons=64 act=gelu lr=0.001 ---
+
+Training time: 144.41 s
+  Worst p99 |ΔY%| = 5.2301%
+
+--- Run 42/50: layers=5 neurons=128 act=relu lr=0.01 ---
+
+Training time: 98.68 s
+  Worst p99 |ΔY%| = 9.5249%
+
+Wall-time safety margin reached. Stopping search.
+
+======================================================================
+Search finished: best worst p99 |ΔY%| = 1.8849%
+Best config: layers=7 neurons=512 act=gelu lr=0.005
+  Loss plot saved: best_plots/best_loss_curves.pdf
+  Percentage difference plot saved: best_plots/best_percentage_difference.pdf
+
+Done.

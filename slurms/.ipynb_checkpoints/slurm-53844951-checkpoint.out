@@ -1,0 +1,19 @@
+W0603 02:04:38.665801 1911197 hlo_rematerialization.cc:3233] Can't reduce memory use below 27.97GiB (30028875366 bytes) by rematerialization; only reduced to 63.84GiB (68551704656 bytes), down from 64.12GiB (68853694544 bytes) originally
+W0603 02:04:49.694040 1911197 bfc_allocator.cc:502] Allocator (GPU_0_bfc) ran out of memory trying to allocate 63.97GiB (rounded to 68685925888)requested by op 
+If the cause is memory fragmentation maybe the environment variable 'TF_GPU_ALLOCATOR=cuda_malloc_async' will improve the situation. 
+Current allocation summary follows.
+Current allocation summary follows.
+W0603 02:04:49.694136 1911197 bfc_allocator.cc:513] _________________________________________________********************_____**************____________
+Sampling size: 4194304
+
+
+Sampling time: 0.601447 s
+
+Traceback (most recent call last):
+  File "/global/u2/j/jairf/chamba/AandBkernels/numerical/AandB.py", line 323, in <module>
+    main(CONFIG)
+  File "/global/u2/j/jairf/chamba/AandBkernels/numerical/AandB.py", line 297, in main
+    batch_results.block_until_ready()
+jax.errors.JaxRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 63.97GiB.
+srun: error: nid001261: task 0: Exited with exit code 1
+srun: Terminating StepId=53844951.0

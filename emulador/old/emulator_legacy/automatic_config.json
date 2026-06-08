@@ -1,0 +1,65 @@
+{
+    "data_file": "AandB_output.txt",
+    "scalers_dir": "best/",
+    "plots_dir": "best/",
+    "history_dir": "best/",
+    "log_file": "search_log.txt",
+
+    "input_cols": [0, 1, 2, 3, 4, 5],
+    "input_labels": ["z", "k1", "k2", "x12", "Ωm", "log10fR0"],
+
+    "output_groups": {
+        "AB": {
+            "cols": [6, 8],
+            "labels": ["A", "B"],
+            "transform": "none",
+            "model_file": "best/best_emulator_AB.keras",
+            "search_space": {
+                "n_layers": [3, 4, 5],
+                "n_neurons": [128, 256],
+                "activation": ["swish"],
+                "lr": [5e-4, 1e-3, 2e-3],
+                "delta": [1.0, 1.5],
+                "batch_size": [1024, 2048]
+            },
+            "max_runs": 30,
+            "success_threshold": 0.8
+        },
+        "AprimeBprime": {
+            "cols": [7, 9],
+            "labels": ["A'", "B'"],
+            "transform": "signed_log",
+            "model_file": "best/best_emulator_AprimeBprime.keras",
+            "search_space": {
+                "n_layers": [5, 6, 7, 8],
+                "n_neurons": [256, 512],
+                "activation": ["swish"],
+                "lr": [6e-4, 1e-3, 2e-3],
+                "delta": [1.0, 1.5],
+                "batch_size": [1024, 2048]
+            },
+            "max_runs": 96,
+            "success_threshold": 1.0
+        }
+    },
+
+    "val_size": 0.20,
+    "test_size": 0.1,
+
+    "output_activation": "linear",
+    "epochs": 600,
+
+    "warmup_epochs": 5,
+    "min_lr": 1e-7,
+    "early_patience": 60,
+    "early_monitor": "val_worst_p99",
+    "p99_every": 20,
+
+    "use_mixed_precision": true,
+    "deterministic": false,
+
+    "wall_time_seconds": 7200,
+    "safety_margin": 300,
+
+    "seed": 42
+}

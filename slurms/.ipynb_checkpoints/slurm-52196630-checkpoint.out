@@ -1,0 +1,14 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1777423414.041466  654908 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Traceback (most recent call last):
+  File "/global/u2/j/jairf/chamba/NN.py", line 667, in <module>
+    run_search(AUTOMATIC_CONFIG)
+  File "/global/u2/j/jairf/chamba/NN.py", line 521, in run_search
+    configure_gpu(cfg["use_mixed_precision"])
+  File "/global/u2/j/jairf/chamba/NN.py", line 140, in configure_gpu
+    tf.config.set_memory_growth(gpu, True)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tensorflow._api.v2.config' has no attribute 'set_memory_growth'
+srun: error: nid001397: task 0: Exited with exit code 1
+srun: Terminating StepId=52196630.0

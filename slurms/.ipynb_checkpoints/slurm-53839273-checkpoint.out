@@ -1,0 +1,17 @@
+Sampling size: 1048576
+
+
+Sampling time: 0.319120 s
+
+Batch compilation + run: 4.6899 s
+
+Results written to: AandB_output.txt
+Writing: 6.1797 s
+Sampling size: 1048576
+
+(8,) (8,)
+(800,) (800,)
+Batch compilation + run: 1.5237 s
+
+Results written to: AandB_curves.txt
+Writing: 0.0364 s
