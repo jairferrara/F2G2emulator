@@ -6,9 +6,18 @@
 # In[1]:
 
 
+import os
+os.environ["PYTHONHASHSEED"] = "42"
+# os.environ["TF_DETERMINISTIC_OPS"] = "42"
+# os.environ["TF_CUDNN_DETERMINISTIC"] = "42"
+
+import random
+
 import time
 
 import sklearn
+
+import joblib
 
 import numpy as np
 
@@ -18,6 +27,11 @@ import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow.keras as K
 
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
 import matplotlib.pyplot as plt
 
 
@@ -25,15 +39,17 @@ import matplotlib.pyplot as plt
 
 
 params = {
-    "neurons": [128, 128, 128, 4],
-    "activations": ["tanh", "tanh", "tanh", "linear"],
-    "epochs": 100,
-    "lr": 5e-4,
-    "loss": "mse",
-    "batch_size": 128,
-    "early_patience": 10,
-    "RLRonP_factor": 0.65,
-    "RLRonP_patience": 7,
+            "neurons" : [64, 512, 512, 4],    # The last one correspond to the output layer
+        "activations" : ["tanh", "tanh", "tanh", "linear"],    # The last one correspond to the output layer
+             "epochs" : 100,
+                 "lr" : 5e-3,
+               "loss" : "mse",
+         "batch_size" : 256,
+     "early_patience" : 10,
+      "RLRonP_factor" : 0.6,
+    "RLRonP_patience" : 7,
+      "path_datasets" : "./../src/datasets/",
+         "path_model" : "./../src/model/"
 }
 
 
@@ -43,40 +59,39 @@ params = {
 
 
 def loadData():
-    return np.loadtxt("./AandB_output.txt", skiprows=1)
-
-
-# In[4]:
-
-
-def splitData(data):
     """
-    Tres datasets con una dist. de los datos 60/20/20 de la cantidad original.
-
-    Sobol no es compatible el shuffleo de los datos, por eso se separan de esta manera.
-    Se generó un solo archivo con todos los datos para no importar 3 distintos.
+    Lo que se resuelve en el script numérico es con fR0, no con log10fR0.
     """
-    block = int(data.shape[0] * 0.2)
-    train      = data[           : -2 * block]
-    validation = data[-2 * block : -block    ]
-    test       = data[-block     :           ]
+    path_datasets = params["path_datasets"]
+
+    train         = np.loadtxt(path_datasets + "train.txt",      skiprows=1)
+    validation    = np.loadtxt(path_datasets + "validation.txt", skiprows=1)
+    test          = np.loadtxt(path_datasets + "test.txt",       skiprows=1)
+
+    # for dataset in [train, validation, test]:
+    #     dataset[:, 5] = 10 ** dataset[:, 5]
+
+    print("Samples size:\n")
+    print(f"Train: {len(train)} || val & test: {len(test)}.")
+
     return train, validation, test
 
 
-# In[5]:
+# In[4]:
 
 
 def _createScaler():
     """
     Se crea un Scaler global para toda la instancia y se impiden problemas con la aleatoriedad.
     """
-    global SSi, SSo
+    global SSi
+    global SSo
     SSi = sklearn.preprocessing.StandardScaler()
     SSo = sklearn.preprocessing.StandardScaler()
     return 0
 
 
-# In[6]:
+# In[5]:
 
 
 def scaleData(data_set):
@@ -88,10 +103,11 @@ def scaleData(data_set):
     """
     i_set, o_set = data_set[:,:6], data_set[:,6:]    # (z, k1, k2, x12, om, logf), (A, Ap, B, Bp)
 
-    if "SSi" and "SSo" not in globals():
+    if "SSi" not in globals() and "SSo" not in globals():
         _createScaler()
 
-        global scaler_i, scaler_o
+        global scaler_i
+        global scaler_o
         scaler_i = SSi.fit(i_set)
         scaler_o = SSo.fit(o_set)
 
@@ -100,7 +116,7 @@ def scaleData(data_set):
 
 # ### Model & training
 
-# In[7]:
+# In[6]:
 
 
 def _createModel():
@@ -108,8 +124,6 @@ def _createModel():
     La arquitectura de la red está descrita por el dict arqui. 
 
     Es mutables para realizar muchas pruebas, pero el input y output siempre son los mismo.
-
-    Claude recomienda una aquitectura densa de: 6->128->128->4
     """
     neurons     = params["neurons"]
     activations = params["activations"]
@@ -130,7 +144,7 @@ def _createModel():
     return model
 
 
-# In[8]:
+# In[7]:
 
 
 def _callbacks():
@@ -160,7 +174,7 @@ def _callbacks():
     return [call_1, call_2]
 
 
-# In[9]:
+# In[8]:
 
 
 def trainModel(scaled_train, scaled_val):
@@ -188,15 +202,27 @@ def trainModel(scaled_train, scaled_val):
     return history, model
 
 
+# In[9]:
+
+
+def saveModel(model):
+    path_model = params["path_model"]
+
+    joblib.dump(scaler_i, path_model + "scaler_i.pkl")
+    joblib.dump(scaler_o, path_model + "scaler_o.pkl")
+
+    model.save(path_model + "model.keras")
+
+
 # ### Post-processing data
 
 # In[10]:
 
 
-def unScaleData(data):
+def _unScaleData(data):
     """
-    Aplica el escalamiento inverso para obtener los valores en los rangos originales.
-    """        
+    Aplica el escalamiento inverso para obtener los valores en los rangos originales.bien. 
+    """
     return scaler_o.inverse_transform(data)
 
 
@@ -211,7 +237,7 @@ def _makePrediction(model, x_data):
     prediction = model.predict(
         x_data,
         batch_size=batch_size,
-        verbose=1,
+        verbose=0,
     )
 
     return prediction
@@ -224,27 +250,27 @@ def relError(model, scaled_data):
     scaled_x, scaled_y = scaled_data[0], scaled_data[1]
     scaled_y_predic    = _makePrediction(model, scaled_x)
 
-    unscaled_y        = unScaleData(scaled_y)
-    unscaled_y_predic = unScaleData(scaled_y_predic)
+    unscaled_y         = _unScaleData(scaled_y)
+    unscaled_y_predic  = _unScaleData(scaled_y_predic)
 
-    scaled_rel_error   = (scaled_y - scaled_y_predic) / scaled_y * 100
-    unscaled_rel_error = (unscaled_y - unscaled_y_predic) / unscaled_y * 100
+    #unscaled_rel_error = (unscaled_y - unscaled_y_predic) * 100
+    unscaled_rel_error = (1 - unscaled_y_predic / unscaled_y) * 100
 
-    return [scaled_rel_error, unscaled_rel_error]
+    return unscaled_rel_error
 
 
 # In[13]:
 
 
-def calcPercentil(rel_error):
-    rows = 4
+def calcPercentil(error):
     r_names = ["A", "Ap", "B", "Bp"]
+    rows = len(r_names)
 
-    print(f"Percentil 99 for unscaled data in relative error")
+    print(f"Percentil 99 for unscaled data in relative percentual error")
     print(20 * "=")
     for r in range(rows):
-        perc = np.percentile(rel_error[1].T[r], 99)
-        print(f"{r_names[r]}: {perc}")
+        perc = np.percentile(np.abs(error.T[r]), 99)
+        print(f"{r_names[r]:>4}: {perc:.6f}%")
     print(20 * "=")
 
 
@@ -265,26 +291,26 @@ def plotLossFunction(history):
     plt.show()
 
 
-# In[24]:
+# In[15]:
 
 
 def plotRelError(rel_error):
     rows, cols = 2, 2
-    names = ["A", "Aprime", "B", "Bprime"]
+    names = ["A", "Ap", "B", "Bp"]
 
-    fig, axes = plt.subplots(rows, cols, figsize=(20, 16))
+    fig, axes = plt.subplots(rows, cols, figsize=(14,10))
 
     for c in range(cols):
         for r in range(rows):
             axes[r, c].hist(
-                rel_error[1].T[r * 2 + c],
+                rel_error.T[r * 2 + c],
                 bins=40,
-                #range=(-2, 2),
+                #range=(-1, 1),
                 log=True,
                 orientation="horizontal",
             )
             axes[r, c].set_xlabel("Frecuency", fontsize=18)
-            axes[r, c].set_ylabel(r"$\Delta y / y$%", fontsize=18)
+            axes[r, c].set_ylabel(r"$\Delta y$%", fontsize=18)
             axes[r, c].tick_params(
                 axis="both",
                 labelsize=14,
@@ -299,30 +325,20 @@ def plotRelError(rel_error):
 # In[16]:
 
 
-data = loadData()
-train, validation, test = splitData(data)
+train, validation, test = loadData()
 
 
 # In[17]:
 
 
-get_ipython().run_cell_magic('time', '', 'scaled_train = scaleData(train)\nscaled_val = scaleData(validation)\n\nhistory, model = trainModel(scaled_train, scaled_val)\nplotLossFunction(history)\n')
+get_ipython().run_cell_magic('time', '', 'scaled_train = scaleData(train)\nscaled_val = scaleData(validation)\n\nhistory, model = trainModel(scaled_train, scaled_val)\nplotLossFunction(history)\nsaveModel(model)\n')
 
 
-# In[25]:
+# In[18]:
 
 
-get_ipython().run_cell_magic('time', '', 'scaled_test = scaleData(test)\n\nrel_error = relError(model, scaled_test)\nplotRelError(rel_error)\n')
+scaled_test = scaleData(test)
 
-
-# In[26]:
-
-
-calcPercentil(rel_error)
-
-
-# In[ ]:
-
-
-
+unscaled_rel_error = relError(model, scaled_test)
+calcPercentil(unscaled_rel_error)
 
