@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# ### Configuration
-
-# In[1]:
-
-
 import os
 os.environ["PYTHONHASHSEED"] = "42"
 # os.environ["TF_DETERMINISTIC_OPS"] = "42"
@@ -34,10 +26,6 @@ tf.random.set_seed(SEED)
 
 import matplotlib.pyplot as plt
 
-
-# In[2]:
-
-
 params = {
             "neurons" : [64, 512, 512, 4],    # The last one correspond to the output layer
         "activations" : ["tanh", "tanh", "tanh", "linear"],    # The last one correspond to the output layer
@@ -52,11 +40,7 @@ params = {
          "path_model" : "./../src/model/"
 }
 
-
 # ### Pre-processing data
-
-# In[3]:
-
 
 def loadData():
     """
@@ -76,10 +60,6 @@ def loadData():
 
     return train, validation, test
 
-
-# In[4]:
-
-
 def _createScaler():
     """
     Se crea un Scaler global para toda la instancia y se impiden problemas con la aleatoriedad.
@@ -89,10 +69,6 @@ def _createScaler():
     SSi = sklearn.preprocessing.StandardScaler()
     SSo = sklearn.preprocessing.StandardScaler()
     return 0
-
-
-# In[5]:
-
 
 def scaleData(data_set):
     """
@@ -113,11 +89,7 @@ def scaleData(data_set):
 
     return [scaler_i.transform(i_set), scaler_o.transform(o_set)]
 
-
 # ### Model & training
-
-# In[6]:
-
 
 def _createModel():
     """
@@ -142,10 +114,6 @@ def _createModel():
 
     model.summary()
     return model
-
-
-# In[7]:
-
 
 def _callbacks():
     ES = K.callbacks.EarlyStopping
@@ -173,10 +141,6 @@ def _callbacks():
 
     return [call_1, call_2]
 
-
-# In[8]:
-
-
 def trainModel(scaled_train, scaled_val):
     """
     shuffle=True no afecta a Sobol ya que solo está cambiando el orden de cada uno de los sets,
@@ -201,10 +165,6 @@ def trainModel(scaled_train, scaled_val):
 
     return history, model
 
-
-# In[9]:
-
-
 def saveModel(model):
     path_model = params["path_model"]
 
@@ -213,11 +173,7 @@ def saveModel(model):
 
     model.save(path_model + "model.keras")
 
-
 # ### Post-processing data
-
-# In[10]:
-
 
 def _unScaleData(data):
     """
@@ -225,11 +181,7 @@ def _unScaleData(data):
     """
     return scaler_o.inverse_transform(data)
 
-
 # ### Data validation
-
-# In[11]:
-
 
 def _makePrediction(model, x_data):
     batch_size = params["batch_size"]
@@ -241,10 +193,6 @@ def _makePrediction(model, x_data):
     )
 
     return prediction
-
-
-# In[12]:
-
 
 def relError(model, scaled_data):
     scaled_x, scaled_y = scaled_data[0], scaled_data[1]
@@ -258,10 +206,6 @@ def relError(model, scaled_data):
 
     return unscaled_rel_error
 
-
-# In[13]:
-
-
 def calcPercentil(error):
     r_names = ["A", "Ap", "B", "Bp"]
     rows = len(r_names)
@@ -273,11 +217,7 @@ def calcPercentil(error):
         print(f"{r_names[r]:>4}: {perc:.6f}%")
     print(20 * "=")
 
-
 # ### Plotting
-
-# In[14]:
-
 
 def plotLossFunction(history):
     succ_epochs = len(history.history['loss'])
@@ -289,10 +229,6 @@ def plotLossFunction(history):
     plt.xlabel('epochs')
     plt.ylabel('loss')
     plt.show()
-
-
-# In[15]:
-
 
 def plotRelError(rel_error):
     rows, cols = 2, 2
@@ -319,26 +255,17 @@ def plotRelError(rel_error):
 
     plt.show()
 
-
 # ### Evaluation
-
-# In[16]:
-
 
 train, validation, test = loadData()
 
-
-# In[17]:
-
-
-get_ipython().run_cell_magic('time', '', 'scaled_train = scaleData(train)\nscaled_val = scaleData(validation)\n\nhistory, model = trainModel(scaled_train, scaled_val)\nplotLossFunction(history)\nsaveModel(model)\n')
-
-
-# In[18]:
-
+scaled_train = scaleData(train)
+scaled_val = scaleData(validation)
+history, model = trainModel(scaled_train, scaled_val)
+plotLossFunction(history)
+saveModel(model)
 
 scaled_test = scaleData(test)
 
 unscaled_rel_error = relError(model, scaled_test)
 calcPercentil(unscaled_rel_error)
-

@@ -1,13 +1,12 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# ### 0. Configuration & Setup
-
-# In[ ]:
-
+"""
+This script generates the datasets for the F2G2 emulator.
+It uses the JAX library to solve the ODEs and the Sobol sequence to sample the parameters.
+It writes the results to a text file.
+"""
 
 import os
-#os.environ["JAX_PLATFORMS"] = "cpu"
+os.environ["JAX_PLATFORMS"] = "cuda"
+# os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 import time
@@ -17,6 +16,8 @@ import math
 import jax
 import numpy as np
 import jax.numpy as jnp
+print(jax.devices())
+print(jax.default_backend())
 
 from jax import jit, vmap, lax
 
@@ -24,69 +25,65 @@ from scipy.stats.qmc import Sobol, scale
 
 jax.config.update("jax_enable_x64", True)
 
+"""
+Rangos posibles de los parámetros:
+[0.001, 0.001, -1.0, 0.1, -7.0]
+[0.6,   0.6,    1.0, 0.4, -3.0]
+"""
 CONFIG = {
     "N_train"         : 60000,
-    "N_z"             : 128,
-    "z_bounds"        : [0, 2.5],
-    "slower"          : [0.002, 0.002, -1.0, 0.1, -7.0],    # [k1, k2, x12, om, log10fR0]
+    "N_z"             : 64,
+    "z_bounds"        : [0, 3],
+    "slower"          : [0.001, 0.001, -1.0, 0.1, -7.0],    # [k1, k2, x12, Om0, log10fR0]
     "supper"          : [0.6,   0.6,    1.0, 0.4, -3.0],
     "invH0"           : 2997.92458,    # H_0^-1 in Mpc/h units
     "etaini"          : -4.0,
     "N_steps"         : 2000,    # steps in the rk4 integrator
-    "path_train"      : "train.txt",
-    "path_validation" : "validation.txt",
-    "path_test"       : "test.txt"
+    "batch_solver"    : 2**14,    # Depends on GPU's memory aviable
+    "path_model"      : "./../src/datasets/",
 }
 
 
-# ### 1. Background cosmology functions
+### 1. Background cosmology functions
 
-# In[ ]:
+def Omega_m(eta, Om0):
+    return 1.0 / (1.0 + (1.0 - Om0) / Om0 * jnp.exp(3.0 * eta))
 
+def H_func(eta, Om0):
+    return jnp.sqrt(Om0 * jnp.exp(-3.0 * eta) + (1.0 - Om0))
 
-def OmM(eta, om):
-    return 1.0 / (1.0 + (1.0 - om) / om * jnp.exp(3.0 * eta))
+def f1(eta, Om0):
+    return 2.0 - 1.5 * Omega_m(eta, Om0)
 
-def H_func(eta, om):
-    return jnp.sqrt(om * jnp.exp(-3.0 * eta) + (1.0 - om))
-
-def f1(eta, om):
-    return 2.0 - 1.5 * OmM(eta, om)
-
-def f2(eta, om):
-    return 1.5 * OmM(eta, om)
-
+def f2(eta, Om0):
+    return 1.5 * Omega_m(eta, Om0)
 
 # ### 2. Model-dependent functions
 
-# In[ ]:
+def mass(eta, Om0, fR0, invH0):
+    num = (Om0 * jnp.exp(-3.0 * eta) + 4.0 * (1.0 - Om0)) ** 1.5
+    den = Om0 + 4.0 * (1.0 - Om0)
 
-
-def mass(eta, om, fR0, invH0):
-    num = (om * jnp.exp(-3.0 * eta) + 4.0 * (1.0 - om)) ** 1.5
-    den = om + 4.0 * (1.0 - om)
     return (1.0 / invH0) * jnp.sqrt(1.0 / (2.0 * jnp.abs(fR0))) * num / den
 
-def mu_func(eta, k, om, fR0, invH0):
-    m2 = mass(eta, om, fR0, invH0) ** 2
+def mu(eta, k, Om0, fR0, invH0):
+    m2 = mass(eta, Om0, fR0, invH0) ** 2
+
     return 1.0 + (1.0 / 3.0) * k**2 / (k**2 + jnp.exp(2.0 * eta) * m2)
 
-def M2_func(eta, om, fR0, invH0):
-    num = (om * jnp.exp(-3.0 * eta) + 4.0 * (1.0 - om)) ** 5
-    den = (om + 4.0 * (1.0 - om)) ** 4
-    return (9.0 / 4.0) / invH0**2 * (1.0 / jnp.abs(fR0)) ** 2 * num / den
+def M2(eta, Om0, fR0, invH0):
+    num = (Om0 * jnp.exp(-3.0 * eta) + 4.0 * (1.0 - Om0)) ** 5
+    den = (Om0 + 4.0 * (1.0 - Om0)) ** 4
 
+    return (9.0 / 4.0) / invH0**2 * (1.0 / jnp.abs(fR0)) ** 2 * num / den
 
 # ### 3. Source functions
 
-# In[ ]:
-
-
-def sourceA(kf, k1, k2, eta, om, fR0, invH0):
-    f2v   = f2(eta, om)
-    mu_kf = mu_func(eta, kf, om, fR0, invH0)
-    mu_k1 = mu_func(eta, k1, om, fR0, invH0)
-    mu_k2 = mu_func(eta, k2, om, fR0, invH0)
+def sourceA(kf, k1, k2, eta, Om0, fR0, invH0):
+    f2v   = f2(eta, Om0)
+    mu_kf = mu(eta, kf, Om0, fR0, invH0)
+    mu_k1 = mu(eta, k1, Om0, fR0, invH0)
+    mu_k2 = mu(eta, k2, Om0, fR0, invH0)
 
     # sourcea
     sa = f2v * mu_kf
@@ -97,9 +94,9 @@ def sourceA(kf, k1, k2, eta, om, fR0, invH0):
     sFL = f2v * ((c1 + c2) * mu_kf - c1 * mu_k2 - c2 * mu_k1)
 
     # sourcedI
-    m2 = mass(eta, om, fR0, invH0) ** 2
-    omH_over_aH0 = (OmM(eta, om) * H_func(eta, om)) / (jnp.exp(eta) * invH0)
-    sdI = (1.0 / 6.0) * omH_over_aH0**2 * (kf**2 * M2_func(eta, om, fR0, invH0)) / (
+    m2 = mass(eta, Om0, fR0, invH0) ** 2
+    omH_over_aH0 = (Omega_m(eta, Om0) * H_func(eta, Om0)) / (jnp.exp(eta) * invH0)
+    sdI = (1.0 / 6.0) * omH_over_aH0**2 * (kf**2 * M2(eta, Om0, fR0, invH0)) / (
         (kf**2 * jnp.exp(-2.0 * eta) + m2) *
         (k1**2 * jnp.exp(-2.0 * eta) + m2) *
         (k2**2 * jnp.exp(-2.0 * eta) + m2)
@@ -107,31 +104,27 @@ def sourceA(kf, k1, k2, eta, om, fR0, invH0):
 
     return sa + sFL - sdI
 
-def sourceB(kf, k1, k2, eta, om, fR0, invH0):
-    f2v   = f2(eta, om)
-    mu_kf = mu_func(eta, kf, om, fR0, invH0)
-    mu_k1 = mu_func(eta, k1, om, fR0, invH0)
-    mu_k2 = mu_func(eta, k2, om, fR0, invH0)
+def sourceB(kf, k1, k2, eta, Om0, fR0, invH0):
+    f2v   = f2(eta, Om0)
+    mu_kf = mu(eta, kf, Om0, fR0, invH0)
+    mu_k1 = mu(eta, k1, Om0, fR0, invH0)
+    mu_k2 = mu(eta, k2, Om0, fR0, invH0)
     return f2v * (mu_k1 + mu_k2 - mu_kf)
-
 
 # ### 4. ODE -- State vector shape: y = [af, afp, bf, bfp, d1, d1p, d2, d2p]
 
-# In[ ]:
-
-
 def rhs(eta, y, args):
-    kf, k1, k2, om, fR0, invH0 = args
+    kf, k1, k2, Om0, fR0, invH0 = args
     af, afp, bf, bfp, d1, d1p, d2, d2p = y
 
-    f1v   = f1(eta, om)
-    f2v   = f2(eta, om)
-    mu_kf = mu_func(eta, kf, om, fR0, invH0)
-    mu_k1 = mu_func(eta, k1, om, fR0, invH0)
-    mu_k2 = mu_func(eta, k2, om, fR0, invH0)
+    f1v   = f1(eta, Om0)
+    f2v   = f2(eta, Om0)
+    mu_kf = mu(eta, kf, Om0, fR0, invH0)
+    mu_k1 = mu(eta, k1, Om0, fR0, invH0)
+    mu_k2 = mu(eta, k2, Om0, fR0, invH0)
 
-    sA = sourceA(kf, k1, k2, eta, om, fR0, invH0)
-    sB = sourceB(kf, k1, k2, eta, om, fR0, invH0)
+    sA = sourceA(kf, k1, k2, eta, Om0, fR0, invH0)
+    sB = sourceB(kf, k1, k2, eta, Om0, fR0, invH0)
 
     d_af  = afp
     d_afp = -f1v * afp + f2v * mu_kf * af + sA * d1 * d2
@@ -144,11 +137,7 @@ def rhs(eta, y, args):
 
     return jnp.array([d_af, d_afp, d_bf, d_bfp, d_d1, d_d1p, d_d2, d_d2p])
 
-
 # ### 5. Runge-Kutta 4th Order integrator
-
-# In[ ]:
-
 
 def rk4_step(y, eta, dt, args):
     k1 = rhs(eta,            y,                 args)
@@ -159,39 +148,33 @@ def rk4_step(y, eta, dt, args):
 
 def solve_ode(y0, eta_array, args):
     dt = eta_array[1] - eta_array[0]
+
     def step_fn(y, eta):
         y_next = rk4_step(y, eta, dt, args)
         return y_next, None    # discard history
+
     y_final, _ = lax.scan(step_fn, y0, eta_array[:-1])    # raplece the vanilla python for
     return y_final
 
-
 # ### 6. Initial conditions
-
-# In[ ]:
-
 
 def get_initial_conditions(etaini):
     Dplusi   = jnp.exp(etaini)
     dDplusi  = jnp.exp(etaini)
     D2plusi  = (3.0 / 7.0) * jnp.exp(2.0 * etaini)
     dD2plusi = (6.0 / 7.0) * jnp.exp(2.0 * etaini)
-    # [af, afp, bf, bfp, d1, d1p, d2, d2p]
+
     return jnp.array([D2plusi, dD2plusi, D2plusi, dD2plusi,
                        Dplusi,  dDplusi,  Dplusi,  dDplusi])
 
-
 # ### 7. Main function
-
-# In[ ]:
-
 
 @jit
 def AandBfunctions(dataset_arr):
     invH0   = CONFIG["invH0"]
     etaini  = CONFIG["etaini"]
     N_steps = CONFIG["N_steps"]
-    z, k1, k2, x12, om, log10fR0 = dataset_arr
+    z, k1, k2, x12, Om0, log10fR0 = dataset_arr
 
     fR0   = 10.0 ** log10fR0
     etaev = -jnp.log(1.0 + z)
@@ -199,18 +182,14 @@ def AandBfunctions(dataset_arr):
 
     eta_array = jnp.linspace(etaini, etaev, N_steps)
     y0        = get_initial_conditions(etaini)
-    args      = (kf, k1, k2, om, fR0, invH0)
+    args      = (kf, k1, k2, Om0, fR0, invH0)
 
     y_final = solve_ode(y0, eta_array, args)
 
     af, afp, bf, bfp, d1, d1p, d2, d2p = y_final    # @etaev
     return postprocess(af, afp, bf, bfp, d1, d1p, d2, d2p)
 
-
 # ### 7b. Postprocessing
-
-# In[ ]:
-
 
 def postprocess(af, afp, bf, bfp, d1, d1p, d2, d2p):
     norm      = (3.0 / 7.0) * d1 * d2
@@ -223,46 +202,37 @@ def postprocess(af, afp, bf, bfp, d1, d1p, d2, d2p):
 
     return jnp.array([Aval, Aprimeval, Bval, Bprimeval])
 
-
 # ### 8. Solver with vmap
 
-# In[ ]:
-
-
-def AandB_solver(dataset):
+def AandB_solver(dataset_in):
     """
     vmap exige que el arreglo sea uno de jax
     """
-    dataset = jnp.array(dataset)
-    solver = vmap(AandBfunctions, in_axes=0)
-    return solver(dataset)
+    batch_solver = CONFIG["batch_solver"]
 
+    solver = vmap(AandBfunctions, in_axes=0)
+
+    solutions = []
+    for idx in range(0, dataset_in.shape[0], batch_solver):
+        batch = jnp.array(dataset_in[idx:idx + batch_solver])
+        solutions.append(solver(batch))
+    solutions = np.concatenate(solutions, axis=0)
+
+    return jnp.array(solutions)
 
 # ### 9. Output to file
 
-# In[ ]:
-
-
 def write_results(path, train_in, train_out):
-    """
-    params  : dict with input parameter arrays
-    results : (N, 4) array of [A, A', B, B']
-    Creates or overwrites the file.
-    """
     data = np.hstack([train_in, train_out])
 
     np.savetxt(
         path,
         data,
-        header="z k1 k2 x12 om log10fR0 A A' B B'",
-        fmt=["%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e"],
+        header="z k1 k2 x12 Om0 log10fR0 A A' B B'",
+        fmt=["%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e"]
     )
 
-
 # ### 10. Sampling
-
-# In[ ]:
-
 
 def generate_samples():
     """
@@ -286,6 +256,7 @@ def generate_samples():
     N_z        = 2 ** math.ceil(math.log2(N_z))
     N_train    = 2 ** math.ceil(math.log2(N_train))
     N_val_test = int(N_train / 4)
+    #N_val_test = N_train
 
     sampler_z         = Sobol(d=1, scramble=True, seed=67)
     sampler_train_val = Sobol(d=len(lower), scramble=True, seed=42)
@@ -309,37 +280,23 @@ def generate_samples():
 
     return datasets[0], datasets[1], datasets[2]
 
+### 11. Main function
 
-# ### 11. Main function
-
-# In[ ]:
-
-
-#%%time
-
-path_train      = CONFIG["path_train"]
-path_validation = CONFIG["path_validation"]
-path_test       = CONFIG["path_test"]
+N_train    = CONFIG["N_train"]
+path_model = CONFIG["path_model"]
 
 ### Genera los samples del input
 train_in, validation_in, test_in = generate_samples()
-print(f"Sampled for train, validation and test.")
+print(f"Sampled for train (~{N_train}), validation and test.")
 
 ### Resuelve el EDP para los output
 train_out      = AandB_solver(train_in)
 validation_out = AandB_solver(validation_in)
 test_out       = AandB_solver(test_in)
-print(f"EDP solver completed.")
+print("EDP solver completed.")
 
 ### Escribe el resultado en un .txt
-write_results(path_train,      train_in,      train_out)
-write_results(path_validation, validation_in, validation_out)
-write_results(path_test,       test_in,       test_out)
-print(f"Written.\n")
-
-
-# In[ ]:
-
-
-
-
+write_results(path_model + "train.txt",      train_in,      train_out)
+write_results(path_model + "validation.txt", validation_in, validation_out)
+write_results(path_model + "test.txt",       test_in,       test_out)
+print("Written.")

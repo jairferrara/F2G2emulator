@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# ### Imports & Configuration
-
-# In[1]:
-
-
 import os
 os.environ["JAX_PLATFORMS"] = "cuda"
 # os.environ["JAX_PLATFORMS"] = "cpu"
@@ -28,10 +20,6 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib.cm import ScalarMappable
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 
-
-# In[2]:
-
-
 params = {
                "k1" : 0.1,   # min: 0.001 || max: 0.6
                "k2" : 0.1,   # min: 0.001 || max: 0.6
@@ -46,10 +34,6 @@ params = {
     "path_datasets" : "./src/datasets/",
        "path_model" : "./src/model/"
 }
-
-
-# In[3]:
-
 
 _RC = {
     # Tipografía
@@ -91,10 +75,6 @@ _NAMES  = [r"\mathcal{A}", r"\mathcal{A}^{\prime}", r"\mathcal{B}", r"\mathcal{B
 _DELTA_NAMES = [r"$\Delta\mathcal{A}\;[\%]$", r"$\Delta\mathcal{A}^{\prime}\;[\%]$",
                 r"$\Delta\mathcal{B}\;[\%]$", r"$\Delta\mathcal{B}^{\prime}\;[\%]$"]
 
-
-# In[4]:
-
-
 def importModel():
     path_model = params["path_model"]
 
@@ -107,10 +87,6 @@ def importModel():
 
     return model
 
-
-# In[5]:
-
-
 def loadData():
     path_datasets = params["path_datasets"]
 
@@ -122,11 +98,7 @@ def loadData():
 
     return test
 
-
 # ### Relative error
-
-# In[6]:
-
 
 def scaleData(data_set):
     """
@@ -139,19 +111,11 @@ def scaleData(data_set):
 
     return [scaler_i.transform(i_set), scaler_o.transform(o_set)]
 
-
-# In[7]:
-
-
 def _unScaleData(data):
     """
     Aplica el escalamiento inverso para obtener los valores en los rangos originales.bien. 
     """
     return scaler_o.inverse_transform(data)
-
-
-# In[8]:
-
 
 def _makePrediction(x_data):
     batch_size = params["batch_size"]
@@ -164,10 +128,6 @@ def _makePrediction(x_data):
 
     return prediction
 
-
-# In[9]:
-
-
 def _calcPercentil(error):
     r_names = ["A", "Ap", "B", "Bp"]
     rows = len(r_names)
@@ -178,10 +138,6 @@ def _calcPercentil(error):
         perc = np.percentile(np.abs(error.T[r]), 99)
         print(f"{r_names[r]:>4}: {perc:.6f}%")
     print(20 * "=")
-
-
-# In[33]:
-
 
 def _plotComparation(scaled_x, unscaled_y, unscaled_y_predic):
     # ── Desescalar y seleccionar bloque z ─────────────────────────────────
@@ -300,10 +256,6 @@ def _plotComparation(scaled_x, unscaled_y, unscaled_y_predic):
         plt.savefig("comparation.pdf")
         plt.show()
 
-
-# In[11]:
-
-
 def relError(scaled_data):
     scaled_x, scaled_y = scaled_data[0], scaled_data[1]
     scaled_y_predic    = _makePrediction(scaled_x)
@@ -318,10 +270,6 @@ def relError(scaled_data):
 
     _plotComparation(scaled_x, unscaled_y, unscaled_y_predic)
     return unscaled_rel_error
-
-
-# In[12]:
-
 
 def plotRelError(rel_error):
     with plt.rc_context(_RC):
@@ -372,46 +320,22 @@ def plotRelError(rel_error):
         plt.savefig("error.pdf")
         plt.show()
 
-
 # ### Kernels
-
-# In[13]:
-
 
 def Omega_m(eta):
     return 1.0 / (1.0 + (1.0 - Om0) / Om0 * jnp.exp(3.0 * eta))
 
-
-# In[14]:
-
-
 def H_func(eta):
     return jnp.sqrt(Om0 * jnp.exp(-3.0 * eta) + (1.0 - Om0))
-
-
-# In[15]:
-
 
 def f1(eta):
     return 2.0 - 1.5 * Omega_m(eta)
 
-
-# In[16]:
-
-
 def f2(eta):
     return 1.5 * Omega_m(eta)
 
-
-# In[17]:
-
-
 def rhs_f0(eta, f0):
     return f2(eta) - f0**2 - f1(eta) * f0
-
-
-# In[18]:
-
 
 @jax.jit
 def compute_f0(eta_ev):
@@ -430,10 +354,6 @@ def compute_f0(eta_ev):
 
     f0_final, _ = jax.lax.scan(step_fn, 1.0, eta_array[:-1])
     return f0_final
-
-
-# In[19]:
-
 
 def calKernels(z_arr, AB_functions):
     A, Ap, B, Bp = AB_functions.T
@@ -467,10 +387,6 @@ def calKernels(z_arr, AB_functions):
 
     return F2, G2
 
-
-# In[20]:
-
-
 def emulate(z_arr, args):
     z_len = len(z_arr)
     N_args = len(args)
@@ -483,10 +399,6 @@ def emulate(z_arr, args):
     unscaled_y_predic = scaler_o.inverse_transform(scaled_y_predic)
 
     return unscaled_y_predic
-
-
-# In[35]:
-
 
 def plotKernels(z_arr, F2, G2, F2_gr=None, G2_gr=None):
     data = [(F2, _C_F2, r"$F_2(z)$"), (G2, _C_G2, r"$G_2(z)$")]
@@ -534,29 +446,28 @@ def plotKernels(z_arr, F2, G2, F2_gr=None, G2_gr=None):
         plt.savefig("kernels.pdf")
         plt.show()
 
-
 # ### Main
 
-# In[34]:
+model = importModel()
+test  = loadData()
 
+scaled_test = scaleData(test)
+test_error = relError(scaled_test)
 
-get_ipython().run_cell_magic('time', '', 'model = importModel()\ntest  = loadData()\n\nscaled_test = scaleData(test)\ntest_error = relError(scaled_test)\n\nplotRelError(test_error)\n')
+plotRelError(test_error)
 
+k1       = params["k1"]
+k2       = params["k2"]
+x12      = params["x12"]
+Om0      = params["Om0"]
+fR0      = 10**params["log10fR0"]
+z_max    = params["z_max"]
 
-# In[23]:
+z_arr = np.linspace(0, z_max, 100)
+args = np.array([k1, k2, x12, Om0, fR0])
 
+AB_functions = emulate(z_arr, args)
 
-get_ipython().run_cell_magic('time', '', 'k1       = params["k1"]\nk2       = params["k2"]\nx12      = params["x12"]\nOm0      = params["Om0"]\nfR0      = 10**params["log10fR0"]\nz_max    = params["z_max"]\n\nz_arr = np.linspace(0, z_max, 100)\nargs = np.array([k1, k2, x12, Om0, fR0])\n\nAB_functions = emulate(z_arr, args)\n\nF2, G2 = calKernels(z_arr, AB_functions)\n')
-
-
-# In[36]:
-
+F2, G2 = calKernels(z_arr, AB_functions)
 
 plotKernels(z_arr, F2, G2)
-
-
-# In[ ]:
-
-
-
-
