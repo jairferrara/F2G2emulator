@@ -9,13 +9,10 @@ import os
 from numerical.ode import CONFIG, generate_samples, AandB_solver, write_results
 
 ### Main
-
-N_train    = CONFIG["N_train"]
 path_model = CONFIG["path_model"]
 
 ### Genera los samples del input
 train_in, validation_in, test_in = generate_samples()
-print(f"Sampled for train (~{N_train}), validation and test.")
 
 ### Resuelve el EDP para los output
 train_out      = AandB_solver(train_in)

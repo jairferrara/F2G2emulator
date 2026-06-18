@@ -6,8 +6,8 @@ y la combinación analítica F2(z)/G2(z) (calKernels), usada también por kernel
 
 import os
 os.environ["PYTHONHASHSEED"] = "42"
-os.environ["JAX_PLATFORMS"] = "cuda"
-# os.environ["JAX_PLATFORMS"] = "cpu"
+# os.environ["JAX_PLATFORMS"] = "cuda"
+os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 import random
@@ -34,7 +34,7 @@ Rangos posibles de los parámetros:
 [0.6,   0.6,    1.0, 0.4, -3.0]
 """
 CONFIG = {
-    "N_train"         : 60000,
+    "N_train"         : 4000,
     "N_z"             : 64,
     "z_bounds"        : [0, 3],
     "slower"          : [0.001, 0.001, -1.0, 0.1, -7.0],    # [k1, k2, x12, Om0, log10fR0]
@@ -284,6 +284,7 @@ def generate_samples():
         ds            = np.repeat(ds, N_z, axis=0)
         datasets[idx] = np.hstack([z_arr, ds])
 
+    print(f"Sampled for train (~{N_train}) and validation/test (~{N_val_test}).")
     return datasets[0], datasets[1], datasets[2]
 
 # ### 11. Growth-rate ODE and analytic F2/G2 kernels (usado por kernels.py)

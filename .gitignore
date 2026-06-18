@@ -1,1 +1,10 @@
+# Claude Code config
 CLAUDE.md
+.claude/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Test cache
+.pytest_cache/
