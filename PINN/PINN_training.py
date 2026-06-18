@@ -48,9 +48,9 @@ def loadData():
     """
     path_datasets = params["path_datasets"]
 
-    train         = np.loadtxt(path_datasets + "train.txt",      skiprows=1)
-    validation    = np.loadtxt(path_datasets + "validation.txt", skiprows=1)
-    test          = np.loadtxt(path_datasets + "test.txt",       skiprows=1)
+    train         = np.load(os.path.join(path_datasets, "train.npz"))["data"]
+    validation    = np.load(os.path.join(path_datasets, "validation.npz"))["data"]
+    test          = np.load(os.path.join(path_datasets, "test.npz"))["data"]
 
     # for dataset in [train, validation, test]:
     #     dataset[:, 5] = 10 ** dataset[:, 5]

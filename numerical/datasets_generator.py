@@ -5,25 +5,27 @@ It writes the results to a text file.
 """
 
 import os
+os.environ["PYTHONHASHSEED"] = "42"
 os.environ["JAX_PLATFORMS"] = "cuda"
 # os.environ["JAX_PLATFORMS"] = "cpu"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
-import time
+import random
+from math import ceil, log2
 
-import math
-
-import jax
 import numpy as np
 import jax.numpy as jnp
-print(jax.devices())
-print(jax.default_backend())
-
-from jax import jit, vmap, lax
-
+from jax import jit, vmap, lax, config, devices, default_backend
 from scipy.stats.qmc import Sobol, scale
 
-jax.config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", True)    # must run before any JAX computation, e.g. devices()
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+
+print(devices())
+print(default_backend())
 
 """
 Rangos posibles de los parámetros:
@@ -41,6 +43,9 @@ CONFIG = {
     "N_steps"         : 2000,    # steps in the rk4 integrator
     "batch_solver"    : 2**14,    # Depends on GPU's memory aviable
     "path_model"      : "./../src/datasets/",
+    "seed_z"          : 67,
+    "seed_train_val"  : 42,
+    "seed_test"       : 420,
 }
 
 
@@ -215,22 +220,23 @@ def AandB_solver(dataset_in):
     solutions = []
     for idx in range(0, dataset_in.shape[0], batch_solver):
         batch = jnp.array(dataset_in[idx:idx + batch_solver])
-        solutions.append(solver(batch))
-    solutions = np.concatenate(solutions, axis=0)
+        solutions.append(np.asarray(solver(batch)))
 
-    return jnp.array(solutions)
+    return np.concatenate(solutions, axis=0)
 
 # ### 9. Output to file
 
-def write_results(path, train_in, train_out):
-    data = np.hstack([train_in, train_out])
+COLUMNS = ["z", "k1", "k2", "x12", "Om0", "log10fR0", "A", "A'", "B", "B'"]
 
-    np.savetxt(
-        path,
-        data,
-        header="z k1 k2 x12 Om0 log10fR0 A A' B B'",
-        fmt=["%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e", "%.6e"]
-    )
+def write_results(path, train_in, train_out):
+    """
+    Se guarda en float32: el RK4 corre en jax x64 por estabilidad numérica, pero
+    eso es independiente de la precisión de salida, que ya quedaba truncada a
+    ~7 cifras significativas con el antiguo formato de texto "%.6e".
+    """
+    data = np.hstack([train_in, train_out]).astype(np.float32)
+
+    np.savez_compressed(path, data=data, columns=COLUMNS)
 
 # ### 10. Sampling
 
@@ -253,14 +259,13 @@ def generate_samples():
     lower    = CONFIG["slower"]
     upper    = CONFIG["supper"]
 
-    N_z        = 2 ** math.ceil(math.log2(N_z))
-    N_train    = 2 ** math.ceil(math.log2(N_train))
+    N_z        = 2 ** ceil(log2(N_z))
+    N_train    = 2 ** ceil(log2(N_train))
     N_val_test = int(N_train / 4)
-    #N_val_test = N_train
 
-    sampler_z         = Sobol(d=1, scramble=True, seed=67)
-    sampler_train_val = Sobol(d=len(lower), scramble=True, seed=42)
-    sampler_test      = Sobol(d=len(lower), scramble=True, seed=420)
+    sampler_z         = Sobol(d=1, scramble=True, seed=CONFIG["seed_z"])
+    sampler_train_val = Sobol(d=len(lower), scramble=True, seed=CONFIG["seed_train_val"])
+    sampler_test      = Sobol(d=len(lower), scramble=True, seed=CONFIG["seed_test"])
 
     unscaled_z          = sampler_z.random(N_z)
     unscaled_train      = sampler_train_val.random(N_train)
@@ -295,8 +300,8 @@ validation_out = AandB_solver(validation_in)
 test_out       = AandB_solver(test_in)
 print("EDP solver completed.")
 
-### Escribe el resultado en un .txt
-write_results(path_model + "train.txt",      train_in,      train_out)
-write_results(path_model + "validation.txt", validation_in, validation_out)
-write_results(path_model + "test.txt",       test_in,       test_out)
+### Escribe el resultado en un .npz
+write_results(os.path.join(path_model, "train.npz"),      train_in,      train_out)
+write_results(os.path.join(path_model, "validation.npz"), validation_in, validation_out)
+write_results(os.path.join(path_model, "test.npz"),       test_in,       test_out)
 print("Written.")
