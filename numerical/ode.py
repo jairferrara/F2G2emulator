@@ -1,7 +1,7 @@
 """
-This script generates the datasets for the F2G2 emulator.
-It uses the JAX library to solve the ODEs and the Sobol sequence to sample the parameters.
-It writes the results to a text file.
+Funciones numéricas del emulador F2G2: cosmología de fondo, funciones dependientes del
+modelo f(R), términos fuente, solver RK4 para (A, A', B, B'), muestreo Sobol de cosmologías
+y la combinación analítica F2(z)/G2(z) (calKernels), usada también por kernels.py.
 """
 
 import os
@@ -11,6 +11,7 @@ os.environ["JAX_PLATFORMS"] = "cuda"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 import random
+from functools import partial
 from math import ceil, log2
 
 import numpy as np
@@ -42,7 +43,7 @@ CONFIG = {
     "etaini"          : -4.0,
     "N_steps"         : 2000,    # steps in the rk4 integrator
     "batch_solver"    : 2**14,    # Depends on GPU's memory aviable
-    "path_model"      : "./../src/datasets/",
+    "path_model"      : "./src/datasets/",
     "seed_z"          : 67,
     "seed_train_val"  : 42,
     "seed_test"       : 420,
@@ -244,10 +245,10 @@ def generate_samples():
     """
     Genera 3 dataset de cosmologías: train, validation y test.
 
-    N_train es el valor mínimo del dataset train. Sobol exige una potencia de 2 para asegurar que 
-    funcione bien, así que se calcula la potencia de 2 más cercana. 
+    N_train es el valor mínimo del dataset train. Sobol exige una potencia de 2 para asegurar que
+    funcione bien, así que se calcula la potencia de 2 más cercana.
 
-    El tamaño de validation y test se busca que sea ~20% de train. Con solo potencias de 2 lo mejor 
+    El tamaño de validation y test se busca que sea ~20% de train. Con solo potencias de 2 lo mejor
     que se puede conseguir es 1/4, por lo que el tamaño de estos datasets debe ser 1/4 del de train.
 
     Para cada cosmología, se extiende el muestreo con N_z número de redshift. La cosmología no cambia,
@@ -285,23 +286,52 @@ def generate_samples():
 
     return datasets[0], datasets[1], datasets[2]
 
-### 11. Main function
+# ### 11. Growth-rate ODE and analytic F2/G2 kernels (usado por kernels.py)
 
-N_train    = CONFIG["N_train"]
-path_model = CONFIG["path_model"]
+def rhs_f0(eta, f0, Om0):
+    return f2(eta, Om0) - f0**2 - f1(eta, Om0) * f0
 
-### Genera los samples del input
-train_in, validation_in, test_in = generate_samples()
-print(f"Sampled for train (~{N_train}), validation and test.")
+@partial(jit, static_argnames=("N_steps",))
+def compute_f0(eta_ev, Om0, etaini, N_steps):
+    eta_array = jnp.linspace(etaini, eta_ev, N_steps)
+    dt = eta_array[1] - eta_array[0]
 
-### Resuelve el EDP para los output
-train_out      = AandB_solver(train_in)
-validation_out = AandB_solver(validation_in)
-test_out       = AandB_solver(test_in)
-print("EDP solver completed.")
+    def step_fn(f0, eta):
+        k1 = rhs_f0(eta,            f0,                 Om0)
+        k2 = rhs_f0(eta + 0.5 * dt, f0 + 0.5 * dt * k1, Om0)
+        k3 = rhs_f0(eta + 0.5 * dt, f0 + 0.5 * dt * k2, Om0)
+        k4 = rhs_f0(eta + dt,       f0 + dt * k3,       Om0)
+        return f0 + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4), None
 
-### Escribe el resultado en un .npz
-write_results(os.path.join(path_model, "train.npz"),      train_in,      train_out)
-write_results(os.path.join(path_model, "validation.npz"), validation_in, validation_out)
-write_results(os.path.join(path_model, "test.npz"),       test_in,       test_out)
-print("Written.")
+    f0_final, _ = lax.scan(step_fn, 1.0, eta_array[:-1])
+    return f0_final
+
+def calKernels(z_arr, AB_functions, k1, k2, x12, Om0, invH0, etaini, N_steps):
+    A, Ap, B, Bp = AB_functions.T
+    eta   = -np.log(1 + z_arr)
+
+    k12  = k1 * k2
+    dotk = k1 * k2 * x12
+    f12  = f1(eta, Om0) + f2(eta, Om0)
+    H_eta = invH0 * H_func(eta, Om0)
+
+    f0 = vmap(lambda e: compute_f0(e, Om0, etaini, N_steps))(jnp.array(eta))
+
+    F2 = (
+        0.5
+        + (3.0 / 14.0) * A
+        + (0.5 - (3.0 / 14.0) * B) * dotk**2 / k12**2
+        + dotk / (2 * k12) * (k1 / k2 + k2 / k1)
+    )
+
+    G2 = (
+        (3.0 * A * f12 + 3.0 * Ap / H_eta) / (14.0 * f0)
+        + (f12 / (2 * f0) - (3 * B * f12 + 3 * Bp / H_eta) / (14.0 * f0))
+          * dotk**2 / k12**2
+        + dotk / (2 * k12) * (
+              (f2(eta, Om0) * k2) / (f0 * k1)
+            + (f1(eta, Om0) * k1) / (f0 * k2)
+          )
+    )
+
+    return F2, G2

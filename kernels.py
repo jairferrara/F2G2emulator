@@ -1,14 +1,6 @@
 import os
-os.environ["JAX_PLATFORMS"] = "cuda"
-# os.environ["JAX_PLATFORMS"] = "cpu"
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 import numpy as np
-
-import jax
-import jax.numpy as jnp
-print(jax.devices())
-print(jax.default_backend())
 
 import joblib
 
@@ -16,9 +8,13 @@ import tensorflow.keras as K
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from matplotlib.colors import BoundaryNorm
-from matplotlib.cm import ScalarMappable
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+
+from numerical.ode import calKernels
+from emulator.inference import (
+    load_split, scale_split, unscale, make_prediction,
+    relative_error_pct, percentile_report, emulate,
+)
 
 params = {
                "k1" : 0.1,   # min: 0.001 || max: 0.6
@@ -78,20 +74,17 @@ _DELTA_NAMES = [r"$\Delta\mathcal{A}\;[\%]$", r"$\Delta\mathcal{A}^{\prime}\;[\%
 def importModel():
     path_model = params["path_model"]
 
-    global scaler_i
-    global scaler_o
-    scaler_i = joblib.load(path_model + "scaler_i.pkl")
-    scaler_o = joblib.load(path_model + "scaler_o.pkl")
+    scaler_i = joblib.load(os.path.join(path_model, "scaler_i.pkl"))
+    scaler_o = joblib.load(os.path.join(path_model, "scaler_o.pkl"))
 
-    model = K.models.load_model(path_model + "model.keras")
+    model = K.models.load_model(os.path.join(path_model, "model.keras"))
 
-    return model
+    return model, scaler_i, scaler_o
 
 def loadData():
     path_datasets = params["path_datasets"]
 
-    test = np.loadtxt(path_datasets + "test.txt", skiprows=1)
-    # test[:,5] = 10**test[:,5]
+    test = load_split(path_datasets, "test")
 
     print("Samples size:")
     print(f"Test: {len(test)}.\n")
@@ -100,46 +93,7 @@ def loadData():
 
 # ### Relative error
 
-def scaleData(data_set):
-    """
-    Divide los 6 imputs y 4 outputs ded cada data set.
-
-    Se crea 2 SS y 2 scalers para input y output. Los scalers solo se crean con train
-    para impedir que el modelo sepa de antemano información de validation o test.
-    """
-    i_set, o_set = data_set[:,:6], data_set[:,6:]    # (z, k1, k2, x12, om, logf), (A, Ap, B, Bp)
-
-    return [scaler_i.transform(i_set), scaler_o.transform(o_set)]
-
-def _unScaleData(data):
-    """
-    Aplica el escalamiento inverso para obtener los valores en los rangos originales.bien. 
-    """
-    return scaler_o.inverse_transform(data)
-
-def _makePrediction(x_data):
-    batch_size = params["batch_size"]
-
-    prediction = model.predict(
-        x_data,
-        batch_size=batch_size,
-        verbose=0,
-    )
-
-    return prediction
-
-def _calcPercentil(error):
-    r_names = ["A", "Ap", "B", "Bp"]
-    rows = len(r_names)
-
-    print(f"Percentil 99 for unscaled data in relative percentual error")
-    print(20 * "=")
-    for r in range(rows):
-        perc = np.percentile(np.abs(error.T[r]), 99)
-        print(f"{r_names[r]:>4}: {perc:.6f}%")
-    print(20 * "=")
-
-def _plotComparation(scaled_x, unscaled_y, unscaled_y_predic):
+def _plotComparation(scaled_x, unscaled_y, unscaled_y_predic, scaler_i):
     # ── Desescalar y seleccionar bloque z ─────────────────────────────────
     N_group    = 64
     unscaled_x = scaler_i.inverse_transform(scaled_x)
@@ -256,21 +210,6 @@ def _plotComparation(scaled_x, unscaled_y, unscaled_y_predic):
         plt.savefig("comparation.pdf")
         plt.show()
 
-def relError(scaled_data):
-    scaled_x, scaled_y = scaled_data[0], scaled_data[1]
-    scaled_y_predic    = _makePrediction(scaled_x)
-
-    unscaled_y         = _unScaleData(scaled_y)
-    unscaled_y_predic  = _unScaleData(scaled_y_predic)
-
-    #unscaled_abs_error = (unscaled_y - unscaled_y_predic) * 100
-    unscaled_rel_error = (1 - unscaled_y_predic / unscaled_y) * 100
-
-    _calcPercentil(unscaled_rel_error)
-
-    _plotComparation(scaled_x, unscaled_y, unscaled_y_predic)
-    return unscaled_rel_error
-
 def plotRelError(rel_error):
     with plt.rc_context(_RC):
         fig, axes = plt.subplots(2, 2, figsize=(11, 8))
@@ -320,86 +259,6 @@ def plotRelError(rel_error):
         plt.savefig("error.pdf")
         plt.show()
 
-# ### Kernels
-
-def Omega_m(eta):
-    return 1.0 / (1.0 + (1.0 - Om0) / Om0 * jnp.exp(3.0 * eta))
-
-def H_func(eta):
-    return jnp.sqrt(Om0 * jnp.exp(-3.0 * eta) + (1.0 - Om0))
-
-def f1(eta):
-    return 2.0 - 1.5 * Omega_m(eta)
-
-def f2(eta):
-    return 1.5 * Omega_m(eta)
-
-def rhs_f0(eta, f0):
-    return f2(eta) - f0**2 - f1(eta) * f0
-
-@jax.jit
-def compute_f0(eta_ev):
-    etaini  = params["etaini"]
-    N_steps = params["N_steps"]
-
-    eta_array = jnp.linspace(etaini, eta_ev, N_steps)
-    dt = eta_array[1] - eta_array[0]
-
-    def step_fn(f0, eta):
-        k1 = rhs_f0(eta,            f0)
-        k2 = rhs_f0(eta + 0.5 * dt, f0 + 0.5 * dt * k1)
-        k3 = rhs_f0(eta + 0.5 * dt, f0 + 0.5 * dt * k2)
-        k4 = rhs_f0(eta + dt,       f0 + dt * k3)
-        return f0 + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4), None
-
-    f0_final, _ = jax.lax.scan(step_fn, 1.0, eta_array[:-1])
-    return f0_final
-
-def calKernels(z_arr, AB_functions):
-    A, Ap, B, Bp = AB_functions.T
-    eta   = -np.log(1 + z_arr)
-    Om0   = params["Om0"]
-    invH0 = params["invH0"]
-
-    k12  = k1 * k2
-    dotk = k1 * k2 * x12
-    f12  = f1(eta) + f2(eta)
-    H_eta = invH0 * H_func(eta)
-
-    f0 = jax.vmap(lambda e: compute_f0(e))(jnp.array(eta))
-
-    F2 = (
-        0.5
-        + (3.0 / 14.0) * A
-        + (0.5 - (3.0 / 14.0) * B) * dotk**2 / k12**2
-        + dotk / (2 * k12) * (k1 / k2 + k2 / k1)
-    )
-
-    G2 = (
-        (3.0 * A * f12 + 3.0 * Ap / H_eta) / (14.0 * f0)
-        + (f12 / (2 * f0) - (3 * B * f12 + 3 * Bp / H_eta) / (14.0 * f0))
-          * dotk**2 / k12**2
-        + dotk / (2 * k12) * (
-              (f2(eta) * k2) / (f0 * k1)
-            + (f1(eta) * k1) / (f0 * k2)
-          )
-    )
-
-    return F2, G2
-
-def emulate(z_arr, args):
-    z_len = len(z_arr)
-    N_args = len(args)
-
-    args = np.tile(args, z_len).reshape(z_len, N_args)
-    x_data = np.hstack([z_arr.reshape(z_len, 1), args])
-
-    scaled_x_data = scaler_i.transform(x_data)
-    scaled_y_predic = _makePrediction(scaled_x_data)
-    unscaled_y_predic = scaler_o.inverse_transform(scaled_y_predic)
-
-    return unscaled_y_predic
-
 def plotKernels(z_arr, F2, G2, F2_gr=None, G2_gr=None):
     data = [(F2, _C_F2, r"$F_2(z)$"), (G2, _C_G2, r"$G_2(z)$")]
     refs = [F2_gr, G2_gr]
@@ -448,11 +307,18 @@ def plotKernels(z_arr, F2, G2, F2_gr=None, G2_gr=None):
 
 # ### Main
 
-model = importModel()
+model, scaler_i, scaler_o = importModel()
 test  = loadData()
 
-scaled_test = scaleData(test)
-test_error = relError(scaled_test)
+scaled_x, scaled_y = scale_split(test, scaler_i, scaler_o)
+scaled_y_predic     = make_prediction(model, scaled_x, params["batch_size"])
+
+unscaled_y        = unscale(scaled_y, scaler_o)
+unscaled_y_predic = unscale(scaled_y_predic, scaler_o)
+
+test_error = relative_error_pct(unscaled_y, unscaled_y_predic)
+percentile_report(test_error)
+_plotComparation(scaled_x, unscaled_y, unscaled_y_predic, scaler_i)
 
 plotRelError(test_error)
 
@@ -466,8 +332,11 @@ z_max    = params["z_max"]
 z_arr = np.linspace(0, z_max, 100)
 args = np.array([k1, k2, x12, Om0, fR0])
 
-AB_functions = emulate(z_arr, args)
+AB_functions = emulate(z_arr, args, model, scaler_i, scaler_o, params["batch_size"])
 
-F2, G2 = calKernels(z_arr, AB_functions)
+F2, G2 = calKernels(
+    z_arr, AB_functions,
+    k1, k2, x12, Om0, params["invH0"], params["etaini"], params["N_steps"],
+)
 
 plotKernels(z_arr, F2, G2)
