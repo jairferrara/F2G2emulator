@@ -6,22 +6,24 @@ It writes the results to a .npz file.
 
 import os
 
-from numerical.ode import CONFIG, generate_samples, AandB_solver, write_results
+from common.progress import stage
+from common.ode import CONFIG, generateSamples, solveAAndBBatch, writeResults, reportJaxBackend
 
-### Main
-path_model = CONFIG["path_model"]
+path_datasets = CONFIG["path_datasets"]
 
-### Genera los samples del input
-train_in, validation_in, test_in = generate_samples()
+reportJaxBackend()
 
-### Resuelve el EDP para los output
-train_out      = AandB_solver(train_in)
-validation_out = AandB_solver(validation_in)
-test_out       = AandB_solver(test_in)
-print("EDP solver completed.")
+with stage("Sampling cosmologies"):
+    train_in, validation_in, test_in = generateSamples()
 
-### Escribe el resultado en un .npz
-write_results(os.path.join(path_model, "train.npz"),      train_in,      train_out)
-write_results(os.path.join(path_model, "validation.npz"), validation_in, validation_out)
-write_results(os.path.join(path_model, "test.npz"),       test_in,       test_out)
-print("Written.")
+with stage(f"Solving train ({len(train_in)} rows)"):
+    train_out = solveAAndBBatch(train_in)
+with stage(f"Solving validation ({len(validation_in)} rows)"):
+    validation_out = solveAAndBBatch(validation_in)
+with stage(f"Solving test ({len(test_in)} rows)"):
+    test_out = solveAAndBBatch(test_in)
+
+with stage("Writing train/validation/test.npz"):
+    writeResults(os.path.join(path_datasets, "train.npz"),      train_in,      train_out)
+    writeResults(os.path.join(path_datasets, "validation.npz"), validation_in, validation_out)
+    writeResults(os.path.join(path_datasets, "test.npz"),       test_in,       test_out)

@@ -1,14 +1,13 @@
 """
-Tests para numerical/ode.py.
+Tests for common/ode.py.
 
-Nota sobre JIT: `AandBfunctions` está decorada con @jit y lee CONFIG["N_steps"]/CONFIG["invH0"]
-como globales de Python (no como argumentos trazados). JAX cachea la compilación por firma de
-shape/dtype de entrada; si CONFIG cambiara *después* de la primera traza con esa shape, el
-cambio no se reflejaría. Por eso aquí NUNCA se mockea CONFIG["N_steps"] -- los tests de
-AandBfunctions/AandB_solver usan el CONFIG real. `solve_ode`/`rk4_step` no están jiteadas, así
-que para probar el integrador se las llama directamente con un N_steps propio del test.
-`compute_f0` recibe N_steps como argumento estático (`static_argnames`), por lo que tampoco
-tiene este problema.
+JIT note: `computeAAndB` is decorated with @jit and reads CONFIG["N_steps"]/CONFIG["invH0"]
+as Python globals (not traced arguments). JAX caches the compiled trace by input
+shape/dtype; if CONFIG changed *after* the first trace with that shape, the change would
+have no effect. So CONFIG["N_steps"] is NEVER mocked here -- the computeAAndB/solveAAndBBatch
+tests use the real CONFIG. `solveOde`/`rk4Step` aren't jitted, so the integrator is tested
+by calling them directly with a test-local N_steps. `computeF0` takes N_steps as a static
+argument (`static_argnames`), so it doesn't have this problem.
 """
 
 import math
@@ -17,39 +16,35 @@ import numpy as np
 import jax.numpy as jnp
 import pytest
 
-from numerical import ode
+from common import ode
 
 
-# ---------------------------------------------------------------------------
-# 1. Cosmología de fondo
-# ---------------------------------------------------------------------------
+"""1. Background cosmology"""
 
 @pytest.mark.parametrize("Om0", [0.1, 0.25, 0.3, 0.4])
-def test_Omega_m_today_equals_Om0(Om0):
-    assert float(ode.Omega_m(0.0, Om0)) == pytest.approx(Om0)
+def test_omegaM_today_equals_Om0(Om0):
+    assert float(ode.omegaM(0.0, Om0)) == pytest.approx(Om0)
 
 
-def test_Omega_m_matter_domination_limit():
-    # eta muy negativo -> dominación de materia -> Omega_m -> 1
-    assert float(ode.Omega_m(-50.0, 0.3)) == pytest.approx(1.0, abs=1e-10)
+def test_omegaM_matter_domination_limit():
+    """As eta -> -inf the universe is matter-dominated, so omegaM -> 1."""
+    assert float(ode.omegaM(-50.0, 0.3)) == pytest.approx(1.0, abs=1e-10)
 
 
 @pytest.mark.parametrize("Om0", [0.1, 0.25, 0.3, 0.4])
-def test_H_func_today_equals_one(Om0):
-    assert float(ode.H_func(0.0, Om0)) == pytest.approx(1.0)
+def test_hubble_today_equals_one(Om0):
+    assert float(ode.hubble(0.0, Om0)) == pytest.approx(1.0)
 
 
 @pytest.mark.parametrize("eta", [-10.0, -1.0, 0.0, 2.0])
 @pytest.mark.parametrize("Om0", [0.1, 0.25, 0.4])
 def test_f1_plus_f2_identity(eta, Om0):
-    # f1 = 2 - 1.5*Omega_m, f2 = 1.5*Omega_m  =>  f1 + f2 == 2 siempre
+    """f1 = 2 - 1.5*Omega_m and f2 = 1.5*Omega_m, so f1 + f2 == 2 always."""
     total = float(ode.f1(eta, Om0)) + float(ode.f2(eta, Om0))
     assert total == pytest.approx(2.0)
 
 
-# ---------------------------------------------------------------------------
-# 2. Funciones dependientes del modelo
-# ---------------------------------------------------------------------------
+"""2. Model-dependent functions"""
 
 def test_mu_screening_limit_k_to_zero():
     mu_val = float(ode.mu(0.0, 1e-12, 0.3, 1e-5, ode.CONFIG["invH0"]))
@@ -61,76 +56,66 @@ def test_mu_no_screening_limit_k_to_infinity():
     assert mu_val == pytest.approx(4.0 / 3.0, abs=1e-6)
 
 
-def test_mass_and_M2_are_positive():
+def test_scalaronMass_and_m2_are_positive():
     eta, Om0, fR0, invH0 = 0.0, 0.3, 1e-5, ode.CONFIG["invH0"]
-    assert float(ode.mass(eta, Om0, fR0, invH0)) > 0.0
-    assert float(ode.M2(eta, Om0, fR0, invH0)) > 0.0
+    assert float(ode.scalaronMass(eta, Om0, fR0, invH0)) > 0.0
+    assert float(ode.m2(eta, Om0, fR0, invH0)) > 0.0
 
 
-# ---------------------------------------------------------------------------
-# 3. Integrador RK4 (vía solve_ode directo, sin pasar por el jit de AandBfunctions)
-# ---------------------------------------------------------------------------
+"""3. RK4 integrator (via solveOde directly, bypassing computeAAndB's jit)"""
 
-def _growing_mode_d1_error(N_steps, etaini=-4.0, etaev=-1.0):
+def _growingModeD1Error(N_steps, etaini=-4.0, etaev=-1.0):
     """
-    Para Om0=1 (dominación de materia exacta) y k1, k2 muy pequeños frente a la escala de masa
-    (mu_k1, mu_k2 ~ 1, régimen GR), la ecuación para d1 se reduce a
-    d1'' + 0.5 d1' - 1.5 d1 = 0, cuyo modo creciente compatible con las condiciones iniciales
-    (Dplusi = dDplusi = exp(etaini)) es exactamente d1(eta) = exp(eta).
-
-    Devuelve el error absoluto entre el d1 final de solve_ode y exp(etaev).
+    For Om0=1 and k1, k2 ~0 (GR regime), d1's growing mode has the closed form
+    d1(eta) = exp(eta); returns the absolute error between solveOde and that value.
     """
     Om0    = 1.0
-    fR0    = 1e-7      # extremo "screened" de CONFIG["slower"][-1] (log10fR0 = -7)
-    k1     = k2 = 1e-3  # mucho menor que la escala de masa -> mu_k1, mu_k2 ~ 1
+    fR0    = 1e-7
+    k1     = k2 = 1e-3
     invH0  = ode.CONFIG["invH0"]
-    kf     = k1         # irrelevante: af/bf están desacoplados de d1/d2
+    kf     = k1
 
     eta_array = jnp.linspace(etaini, etaev, N_steps)
-    y0        = ode.get_initial_conditions(etaini)
-    args      = (kf, k1, k2, Om0, fR0, invH0)
+    y0     = ode.getInitialConditions(etaini)
+    rhs_fn = lambda eta, y: ode.rhs(eta, y, kf, k1, k2, Om0, fR0, invH0)
 
-    y_final = ode.solve_ode(y0, eta_array, args)
+    y_final = ode.solveOde(rhs_fn, y0, eta_array)
     d1_final = float(y_final[4])
 
     return abs(d1_final - math.exp(etaev))
 
 
 def test_rk4_matches_analytic_growing_mode():
-    error = _growing_mode_d1_error(N_steps=500)
+    error = _growingModeD1Error(N_steps=500)
     assert error < 1e-4
 
 
 def test_rk4_convergence_with_more_steps():
-    coarse_error = _growing_mode_d1_error(N_steps=50)
-    fine_error   = _growing_mode_d1_error(N_steps=2000)
+    coarse_error = _growingModeD1Error(N_steps=50)
+    fine_error   = _growingModeD1Error(N_steps=2000)
     assert fine_error < coarse_error
 
 
-# ---------------------------------------------------------------------------
-# 4. Condiciones iniciales
-# ---------------------------------------------------------------------------
+"""4. Initial conditions"""
 
-def test_get_initial_conditions_matches_closed_form():
+def test_getInitialConditions_matches_closed_form():
     etaini = -4.0
-    y0 = np.asarray(ode.get_initial_conditions(etaini))
+    y0 = np.asarray(ode.getInitialConditions(etaini))
 
-    Dplusi   = math.exp(etaini)
-    dDplusi  = math.exp(etaini)
-    D2plusi  = (3.0 / 7.0) * math.exp(2.0 * etaini)
-    dD2plusi = (6.0 / 7.0) * math.exp(2.0 * etaini)
+    d1_seed  = math.exp(etaini)
+    d1p_seed = math.exp(etaini)
+    af_seed  = (3.0 / 7.0) * math.exp(2.0 * etaini)
+    afp_seed = (6.0 / 7.0) * math.exp(2.0 * etaini)
 
-    expected = np.array([D2plusi, dD2plusi, D2plusi, dD2plusi,
-                          Dplusi,  dDplusi,  Dplusi,  dDplusi])
+    expected = np.array([af_seed, afp_seed, af_seed, afp_seed,
+                          d1_seed, d1p_seed, d1_seed, d1p_seed])
     np.testing.assert_allclose(y0, expected, rtol=1e-12)
 
 
-# ---------------------------------------------------------------------------
-# 5. Postprocess (aritmética pura)
-# ---------------------------------------------------------------------------
+"""5. Postprocess (pure arithmetic)"""
 
 def test_postprocess_arithmetic():
-    # d1 = d2 = 1, d1p = d2p = 0 => norm = 3/7, d_norm = 0 -> fórmulas se simplifican
+    """d1 = d2 = 1, d1p = d2p = 0 => norm = 3/7, d_norm = 0, simplifying the formulas."""
     af, afp, bf, bfp = 1.0, 2.0, 3.0, 4.0
     d1, d1p, d2, d2p = 1.0, 0.0, 1.0, 0.0
 
@@ -145,12 +130,33 @@ def test_postprocess_arithmetic():
     np.testing.assert_allclose(result, expected, rtol=1e-12)
 
 
-# ---------------------------------------------------------------------------
-# 6. AandBfunctions / AandB_solver (con CONFIG real, ver nota de cabecera)
-# ---------------------------------------------------------------------------
+"""5b. Environment toggles (resolveJaxPlatform / resolveX64Enabled)"""
 
-def _sample_rows(n):
-    # Filas dentro de los bounds de CONFIG["slower"]/CONFIG["supper"], variando z.
+def test_resolveJaxPlatform_defaults_to_cpu():
+    assert ode.resolveJaxPlatform({}) == "cpu"
+
+
+def test_resolveJaxPlatform_respects_override():
+    assert ode.resolveJaxPlatform({"JAX_PLATFORMS": "cuda"}) == "cuda"
+
+
+def test_resolveX64Enabled_defaults_to_true():
+    assert ode.resolveX64Enabled({}) is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "False"])
+def test_resolveX64Enabled_can_be_disabled(value):
+    assert ode.resolveX64Enabled({"F2G2_JAX_X64": value}) is False
+
+
+def test_resolveX64Enabled_other_values_stay_enabled():
+    assert ode.resolveX64Enabled({"F2G2_JAX_X64": "1"}) is True
+
+
+"""6. computeAAndB / solveAAndBBatch (with the real CONFIG, see header note)"""
+
+def _sampleRows(n):
+    """Rows within CONFIG["slower"]/CONFIG["supper"] bounds, varying z."""
     z_vals = np.linspace(0.1, 1.5, n)
     rows = np.array([
         [z, 0.05, 0.05, 0.0, 0.3, -5.7] for z in z_vals
@@ -158,39 +164,93 @@ def _sample_rows(n):
     return rows
 
 
-def test_AandBfunctions_output_shape_and_finiteness():
-    row = jnp.array(_sample_rows(1)[0])
-    out = np.asarray(ode.AandBfunctions(row))
+def test_computeAAndB_output_shape_and_finiteness():
+    row = jnp.array(_sampleRows(1)[0])
+    out = np.asarray(ode.computeAAndB(row))
 
     assert out.shape == (4,)
     assert np.all(np.isfinite(out))
 
 
-def test_AandB_solver_chunking_consistency(monkeypatch):
-    dataset = _sample_rows(6)
+def test_solveAAndBBatch_chunking_consistency(monkeypatch):
+    dataset = _sampleRows(6)
 
-    result_single_chunk = ode.AandB_solver(dataset)
+    result_single_chunk = ode.solveAAndBBatch(dataset)
 
     monkeypatch.setitem(ode.CONFIG, "batch_solver", 2)
-    result_multi_chunk = ode.AandB_solver(dataset)
+    result_multi_chunk = ode.solveAAndBBatch(dataset)
 
     assert result_single_chunk.shape == (6, 4)
     assert result_multi_chunk.shape == (6, 4)
     np.testing.assert_allclose(result_multi_chunk, result_single_chunk, rtol=1e-10)
 
 
-# ---------------------------------------------------------------------------
-# 7. write_results
-# ---------------------------------------------------------------------------
+def test_solveAAndBBatch_handles_non_divisible_remainder_chunk(monkeypatch):
+    """
+    batch_solver=3 with 7 rows leaves a 1-row remainder chunk; checks it still matches
+    computeAAndB applied row-by-row.
+    """
+    dataset = _sampleRows(7)
 
-def test_write_results_roundtrip(tmp_path):
+    monkeypatch.setitem(ode.CONFIG, "batch_solver", 3)
+    batched = ode.solveAAndBBatch(dataset)
+
+    expected = np.stack([
+        np.asarray(ode.computeAAndB(jnp.array(row))) for row in dataset
+    ])
+
+    assert batched.shape == (7, 4)
+    np.testing.assert_allclose(batched, expected, rtol=1e-10)
+
+
+"""6b. resolveBatchSolver"""
+
+def test_resolveBatchSolver_uses_no_chunking_for_small_datasets():
+    assert ode.resolveBatchSolver(100, default_batch_solver=16384) == 0
+
+
+def test_resolveBatchSolver_keeps_default_for_large_datasets():
+    assert ode.resolveBatchSolver(20000, default_batch_solver=16384) == 16384
+
+
+def test_resolveBatchSolver_boundary_equal_to_default_uses_no_chunking():
+    assert ode.resolveBatchSolver(16384, default_batch_solver=16384) == 0
+
+
+def test_resolveBatchSolver_reads_CONFIG_when_default_unspecified(monkeypatch):
+    monkeypatch.setitem(ode.CONFIG, "batch_solver", 500)
+
+    assert ode.resolveBatchSolver(100) == 0
+    assert ode.resolveBatchSolver(1000) == 500
+
+
+def test_solveAAndBBatch_single_vmap_path_matches_row_by_row():
+    """
+    With the real (unmocked) CONFIG["batch_solver"]=16384, a small dataset takes
+    resolveBatchSolver's batch_size=0 ("just vmap everything") path instead of chunking.
+    """
+    dataset = _sampleRows(6)
+
+    assert ode.resolveBatchSolver(len(dataset)) == 0
+
+    result = ode.solveAAndBBatch(dataset)
+    expected = np.stack([
+        np.asarray(ode.computeAAndB(jnp.array(row))) for row in dataset
+    ])
+
+    np.testing.assert_allclose(result, expected, rtol=1e-10)
+
+
+"""7. writeResults"""
+
+def test_writeResults_roundtrip(tmp_path):
     train_in  = np.array([[0.1, 0.05, 0.05, 0.0, 0.3, -5.7],
                            [0.2, 0.06, 0.04, 0.1, 0.35, -4.5]])
     train_out = np.array([[1.0, 0.1, 0.9, -0.1],
                            [1.1, 0.2, 0.8, -0.2]])
 
     out_path = tmp_path / "out.npz"
-    ode.write_results(str(out_path), train_in, train_out)
+    ode.writeResults(str(out_path), train_in, train_out)
 
     loaded = np.load(out_path)
 
@@ -203,15 +263,13 @@ def test_write_results_roundtrip(tmp_path):
     )
 
 
-# ---------------------------------------------------------------------------
-# 8. generate_samples
-# ---------------------------------------------------------------------------
+"""8. generateSamples"""
 
-def test_generate_samples_shapes_and_bounds(monkeypatch):
+def test_generateSamples_shapes_and_bounds(monkeypatch):
     monkeypatch.setitem(ode.CONFIG, "N_train", 8)
     monkeypatch.setitem(ode.CONFIG, "N_z", 4)
 
-    train, validation, test = ode.generate_samples()
+    train, validation, test = ode.generateSamples()
 
     N_z         = 4
     N_train     = 8
@@ -230,11 +288,11 @@ def test_generate_samples_shapes_and_bounds(monkeypatch):
         assert np.all(ds[:, 1:] >= lower) and np.all(ds[:, 1:] <= upper)
 
 
-def test_generate_samples_train_validation_do_not_overlap(monkeypatch):
+def test_generateSamples_train_validation_do_not_overlap(monkeypatch):
     monkeypatch.setitem(ode.CONFIG, "N_train", 8)
     monkeypatch.setitem(ode.CONFIG, "N_z", 4)
 
-    train, validation, _test = ode.generate_samples()
+    train, validation, _test = ode.generateSamples()
     N_z = 4
 
     train_cosmologies      = train[::N_z][:, 1:]
@@ -244,32 +302,37 @@ def test_generate_samples_train_validation_do_not_overlap(monkeypatch):
         assert not np.any(np.all(np.isclose(train_cosmologies, row), axis=1))
 
 
-def test_generate_samples_is_reproducible(monkeypatch):
+def test_generateSamples_is_reproducible(monkeypatch):
     monkeypatch.setitem(ode.CONFIG, "N_train", 8)
     monkeypatch.setitem(ode.CONFIG, "N_z", 4)
 
-    train_a, validation_a, test_a = ode.generate_samples()
-    train_b, validation_b, test_b = ode.generate_samples()
+    train_a, validation_a, test_a = ode.generateSamples()
+    train_b, validation_b, test_b = ode.generateSamples()
 
     np.testing.assert_array_equal(train_a, train_b)
     np.testing.assert_array_equal(validation_a, validation_b)
     np.testing.assert_array_equal(test_a, test_b)
 
 
-# ---------------------------------------------------------------------------
-# 9. compute_f0 (punto fijo en dominación de materia)
-# ---------------------------------------------------------------------------
+"""8b. reportJaxBackend (explicit call, not an import-time side effect)"""
+
+def test_reportJaxBackend_prints_backend_info(capsys):
+    ode.reportJaxBackend()
+
+    captured = capsys.readouterr().out
+    assert "JAX backend:" in captured
+
+
+"""9. computeF0 (fixed point under matter domination)"""
 
 @pytest.mark.parametrize("eta_ev", [-3.0, -1.5, 0.0])
-def test_compute_f0_fixed_point_at_Om0_one(eta_ev):
-    # rhs_f0(eta, f0=1, Om0=1) = f2 - f0^2 - f1*f0 = 1.5 - 1 - 0.5 = 0 -> f0=1 es punto fijo
-    f0 = float(ode.compute_f0(eta_ev, 1.0, etaini=-4.0, N_steps=50))
+def test_computeF0_fixed_point_at_Om0_one(eta_ev):
+    """growthRateRhs(eta, f0=1, Om0=1) = f2 - f0^2 - f1*f0 = 1.5 - 1 - 0.5 = 0, so f0=1 is a fixed point."""
+    f0 = float(ode.computeF0(eta_ev, 1.0, etaini=-4.0, N_steps=50))
     assert f0 == pytest.approx(1.0, abs=1e-10)
 
 
-# ---------------------------------------------------------------------------
-# 10. calKernels (smoke test)
-# ---------------------------------------------------------------------------
+"""10. calKernels (smoke test)"""
 
 def test_calKernels_output_shapes_and_finiteness():
     z_arr = np.linspace(0.0, 1.0, 5)

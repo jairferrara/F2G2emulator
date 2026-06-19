@@ -18,19 +18,23 @@ tf.random.set_seed(SEED)
 
 import matplotlib.pyplot as plt
 
-from emulator.inference import (
-    N_INPUTS, load_split, scale_split, unscale, make_prediction,
-    relative_error_pct, percentile_report,
+from common.progress import stage
+from common.inference import (
+    N_INPUTS, loadSplit, scaleSplit, unscale, predictAndUnscale,
+    relativeErrorPct, percentileReport,
 )
-from PINN.model import train_model, save_model
+from common.model import trainModel, saveModel
 
+"""
+Last entry of "neurons"/"activations" is the output layer.
+"""
 params = {
-            "neurons" : [64, 512, 512, 4],    # The last one correspond to the output layer
-        "activations" : ["tanh", "tanh", "tanh", "linear"],    # The last one correspond to the output layer
+            "neurons" : [64, 512, 512, 4],
+        "activations" : ["tanh", "tanh", "tanh", "linear"],
              "epochs" : 100,
                  "lr" : 5e-3,
                "loss" : "mse",
-         "batch_size" : 256,
+         "batch_size" : 1024,
      "early_patience" : 10,
       "RLRonP_factor" : 0.6,
     "RLRonP_patience" : 7,
@@ -38,17 +42,12 @@ params = {
          "path_model" : "./src/model/"
 }
 
-# ### Pre-processing data
-
 def loadData():
-    """
-    Lo que se resuelve en el script numérico es con fR0, no con log10fR0.
-    """
     path_datasets = params["path_datasets"]
 
-    train      = load_split(path_datasets, "train")
-    validation = load_split(path_datasets, "validation")
-    test       = load_split(path_datasets, "test")
+    train      = loadSplit(path_datasets, "train")
+    validation = loadSplit(path_datasets, "validation")
+    test       = loadSplit(path_datasets, "test")
 
     print("Samples size:\n")
     print(f"Train: {len(train)} || val & test: {len(test)}.")
@@ -57,17 +56,15 @@ def loadData():
 
 def createScalers(train):
     """
-    Se crean los scalers únicamente con train para impedir que el modelo sepa de
-    antemano información de validation o test.
+    Scalers are fit only on train to prevent leaking validation/test information into
+    the model beforehand.
     """
-    i_set, o_set = train[:, :N_INPUTS], train[:, N_INPUTS:]
+    input_set, output_set = train[:, :N_INPUTS], train[:, N_INPUTS:]
 
-    scaler_i = StandardScaler().fit(i_set)
-    scaler_o = StandardScaler().fit(o_set)
+    scaler_i = StandardScaler().fit(input_set)
+    scaler_o = StandardScaler().fit(output_set)
 
     return scaler_i, scaler_o
-
-# ### Plotting
 
 def plotLossFunction(history):
     succ_epochs = len(history.history['loss'])
@@ -91,7 +88,6 @@ def plotRelError(rel_error):
             axes[r, c].hist(
                 rel_error.T[r * 2 + c],
                 bins=40,
-                #range=(-1, 1),
                 log=True,
                 orientation="horizontal",
             )
@@ -105,25 +101,26 @@ def plotRelError(rel_error):
 
     plt.show()
 
-# ### Evaluation
-
-train, validation, test = loadData()
+with stage("Loading datasets"):
+    train, validation, test = loadData()
 scaler_i, scaler_o = createScalers(train)
 
-scaled_train = scale_split(train,      scaler_i, scaler_o)
-scaled_val   = scale_split(validation, scaler_i, scaler_o)
+scaled_train = scaleSplit(train,      scaler_i, scaler_o)
+scaled_val   = scaleSplit(validation, scaler_i, scaler_o)
 
-history, model = train_model(params, scaled_train, scaled_val)
+with stage("Training"):
+    history, model = trainModel(params, scaled_train, scaled_val)
 plotLossFunction(history)
-save_model(params, model, scaler_i, scaler_o)
 
-scaled_x, scaled_y = scale_split(test, scaler_i, scaler_o)
-scaled_y_predic     = make_prediction(model, scaled_x, params["batch_size"])
+saveModel(params, model, scaler_i, scaler_o)
+print(f"Model saved to {params['path_model']}")
 
-unscaled_y        = unscale(scaled_y, scaler_o)
-unscaled_y_predic = unscale(scaled_y_predic, scaler_o)
+with stage("Evaluating on test split"):
+    scaled_x, scaled_y = scaleSplit(test, scaler_i, scaler_o)
+    unscaled_y         = unscale(scaled_y, scaler_o)
+    unscaled_y_predic   = predictAndUnscale(model, scaled_x, scaler_o, params["batch_size"])
 
-unscaled_rel_error = relative_error_pct(unscaled_y, unscaled_y_predic)
-percentile_report(unscaled_rel_error)
+unscaled_rel_error = relativeErrorPct(unscaled_y, unscaled_y_predic)
+percentileReport(unscaled_rel_error)
 
 plotRelError(unscaled_rel_error)

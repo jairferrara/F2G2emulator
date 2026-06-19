@@ -8,3 +8,6 @@ __pycache__/
 
 # Test cache
 .pytest_cache/
+
+# Generated plots
+*.pdf

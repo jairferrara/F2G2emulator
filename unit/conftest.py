@@ -1,7 +1,7 @@
 """
-Fixtures compartidas entre los tests de unit/. No se mockea CONFIG["N_steps"] aquí porque
-AandBfunctions está jiteada y la lectura de CONFIG queda fijada en la primera traza (ver
-notas en unit/test_ode.py); ese mock se hace inline, función por función, donde es seguro.
+Fixtures shared across unit/ tests. CONFIG["N_steps"] isn't mocked here because
+computeAAndB is jitted and its CONFIG reads get fixed on the first trace (see the notes
+in unit/test_ode.py); that mocking is done inline, function by function, where it's safe.
 """
 
 import numpy as np
@@ -12,8 +12,8 @@ from sklearn.preprocessing import StandardScaler
 
 class FakeKerasModel:
     """
-    Stub de un modelo Keras: solo implementa .predict() con la misma firma que se usa en
-    emulator/inference.py, registrando los argumentos recibidos para poder verificarlos.
+    Stub of a Keras model: only implements .predict() with the same signature used in
+    common/inference.py, recording the received arguments so they can be checked.
     """
 
     def __init__(self, n_outputs=4, fn=None):
@@ -40,8 +40,8 @@ def fake_model():
 @pytest.fixture
 def synthetic_scalers():
     """
-    StandardScaler de input (6 cols) y de output (4 cols), fiteados sobre datos sintéticos
-    pequeños pero con variación real en cada columna (necesario para que el fit no degenere).
+    Input (6 cols) and output (4 cols) StandardScalers, fit on small synthetic data with
+    real variation in every column (needed so the fit doesn't degenerate).
     """
     rng = np.random.default_rng(0)
     i_set = rng.uniform(low=0.0, high=1.0, size=(20, 6))
