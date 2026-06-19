@@ -1,5 +1,13 @@
+# Claude Code config
+CLAUDE.md
+.claude/
+
+# Python bytecode cache
 __pycache__/
 *.pyc
-.ipynb_checkpoints/
-slurms/*.out
-numerical/slurm/*.out
+
+# Test cache
+.pytest_cache/
+
+# Generated plots
+*.pdf
